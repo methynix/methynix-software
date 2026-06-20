@@ -13,6 +13,8 @@ import { WhatsNew } from "./pages/WhatsNew";
 import { Contact } from "./pages/Contact";
 import { Maintenance } from "./pages/Maintenance";
 import { Login } from "./pages/admin/Login";
+import { Terms } from "./pages/Terms";
+import { Privacy } from "./pages/Privacy";
 import { Dashboard } from "./pages/admin/Dashboard";
 
 const ScrollToTop = () => {
@@ -81,6 +83,8 @@ const Shell = () => {
         <Route path="/about" element={<PublicLayout><About /></PublicLayout>} />
         <Route path="/whats-new" element={<PublicLayout><WhatsNew /></PublicLayout>} />
         <Route path="/contact" element={<PublicLayout><Contact /></PublicLayout>} />
+        <Route path="/terms" element={<PublicLayout><Terms /></PublicLayout>} />
+<Route path="/privacy" element={<PublicLayout><Privacy /></PublicLayout>} />
         <Route path="/admin" element={<AdminGate />} />
         <Route path="/admin/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
         <Route path="*" element={<PublicLayout><NotFound /></PublicLayout>} />

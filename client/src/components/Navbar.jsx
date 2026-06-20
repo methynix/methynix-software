@@ -8,6 +8,8 @@ const links = [
   { name: "Services", path: "/services" },
   { name: "About", path: "/about" },
   { name: "What's new", path: "/whats-new" },
+   { name: "Terms", path: "/terms" },
+  { name: "Privacy", path: "/privacy" },
 ];
 
 export const Navbar = () => {
