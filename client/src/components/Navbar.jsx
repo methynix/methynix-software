@@ -31,7 +31,7 @@ export const Navbar = () => {
     <header className="sticky top-0 z-[100] bg-ink/85 backdrop-blur border-b border-line">
       <nav className="max-w-page mx-auto px-5 md:px-8 h-16 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2.5 group">
-          <img src="/logo-advanced.jpeg" alt="Methynix logo" className="h-8 w-8 rounded-full object-contain" />
+          <img src="/logo.png" alt="Methynix logo" className="h-8 w-8 rounded-full object-contain" />
           <span className="font-display text-lg font-semibold tracking-tight">{SITE.name}</span>
         </Link>
 
