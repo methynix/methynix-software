@@ -5,8 +5,9 @@ import { useAuth } from "../../context/AuthContext";
 import { useUI } from "../../context/UIContext";
 import { Input } from "../../components/ui/Input";
 import { SITE } from "../../constants/site";
+import { DocumentsPanel } from "../../features/documents/DocumentsPanel";
 
-const TABS = ["What's new", "Work", "Site"];
+const TABS = ["Documents", "What's new", "Work", "Site"];
 
 const emptyPost = { title: "", body: "", image_url: "" };
 const emptyProject = { name: "", type: "web", summary: "", url: "", image_url: "" };
@@ -268,6 +269,7 @@ export const Dashboard = () => {
       </div>
 
       <div className="mt-8">
+        {tab === "Documents" ? <DocumentsPanel showToast={showToast} /> : null}
         {tab === "What's new" ? <PostsPanel showToast={showToast} /> : null}
         {tab === "Work" ? <ProjectsPanel showToast={showToast} /> : null}
         {tab === "Site" ? <SitePanel showToast={showToast} /> : null}

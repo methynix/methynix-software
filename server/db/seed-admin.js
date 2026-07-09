@@ -1,6 +1,8 @@
 require("dotenv").config();
 const bcrypt = require("bcryptjs");
-const pool = require("../config/db");
+const mongoose = require("mongoose");
+const connectDB = require("../config/db");
+const Admin = require("../models/adminModel");
 
 const run = async () => {
   const email = process.env.SEED_ADMIN_EMAIL;
@@ -15,17 +17,18 @@ const run = async () => {
     process.exit(1);
   }
 
+  await connectDB();
+
   const hash = await bcrypt.hash(password, 12);
 
-  await pool.query(
-    `insert into admin_users (email, password_hash)
-     values ($1, $2)
-     on conflict (email) do update set password_hash = excluded.password_hash`,
-    [email.toLowerCase(), hash]
+  await Admin.model.findOneAndUpdate(
+    { email: email.toLowerCase() },
+    { email: email.toLowerCase(), password_hash: hash },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
   );
 
   console.log(`Admin account ready for ${email}.`);
-  await pool.end();
+  await mongoose.disconnect();
   process.exit(0);
 };
 

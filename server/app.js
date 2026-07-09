@@ -30,7 +30,8 @@ app.use(
   })
 );
 
-app.use(express.json({ limit: "20kb" }));
+// Documents can carry base64 signature images, so allow a larger body here.
+app.use(express.json({ limit: "3mb" }));
 
 const limiter = rateLimit({
   max: 60,
