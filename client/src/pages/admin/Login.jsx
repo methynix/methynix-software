@@ -33,7 +33,7 @@ export const Login = () => {
     <div className="min-h-screen flex items-center justify-center px-5">
       <div className="w-full max-w-sm">
         <div className="flex items-center gap-2.5 justify-center mb-8">
-          <img src="/logo-advanced.jpeg" alt="" className="h-9 w-9 rounded-full object-contain" />
+          <img src="/logo.jpg" alt="" className="h-9 w-9 rounded-full object-contain" />
           <span className="font-display text-xl font-semibold">{SITE.name}</span>
         </div>
         <div className="rounded-2xl border border-line bg-surface p-7">

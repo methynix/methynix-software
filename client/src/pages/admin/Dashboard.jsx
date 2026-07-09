@@ -1,11 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import apiClient from "../../api/apiClient";
 import { useAuth } from "../../context/AuthContext";
 import { useUI } from "../../context/UIContext";
 import { Input } from "../../components/ui/Input";
 import { SITE } from "../../constants/site";
-import { DocumentsPanel } from "../../features/documents/DocumentsPanel";
+
+// The documents feature pulls in the heavy PDF renderer, so load it only when
+// the admin opens its tab — keeps it out of the bundle every visitor downloads.
+const DocumentsPanel = lazy(() =>
+  import("../../features/documents/DocumentsPanel").then((m) => ({ default: m.DocumentsPanel }))
+);
 
 const TABS = ["Documents", "What's new", "Work", "Site"];
 
@@ -269,7 +274,11 @@ export const Dashboard = () => {
       </div>
 
       <div className="mt-8">
-        {tab === "Documents" ? <DocumentsPanel showToast={showToast} /> : null}
+        {tab === "Documents" ? (
+          <Suspense fallback={<p className="text-dim text-sm">Loading document tools…</p>}>
+            <DocumentsPanel showToast={showToast} />
+          </Suspense>
+        ) : null}
         {tab === "What's new" ? <PostsPanel showToast={showToast} /> : null}
         {tab === "Work" ? <ProjectsPanel showToast={showToast} /> : null}
         {tab === "Site" ? <SitePanel showToast={showToast} /> : null}
