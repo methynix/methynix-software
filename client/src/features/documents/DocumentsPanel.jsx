@@ -174,7 +174,14 @@ export const DocumentsPanel = ({ showToast }) => {
             </div>
           </div>
 
-          <Form value={working} onChange={setWorking} />
+          {/* Only render a form once the working doc matches the selected type.
+              Otherwise a tab switch renders e.g. ContractForm against invoice
+              data (no `stages`) for one frame and crashes the panel. */}
+          {working.type === type ? (
+            <Form value={working} onChange={setWorking} />
+          ) : (
+            <p className="text-dim text-sm">Loading…</p>
+          )}
 
           <div className="flex flex-wrap gap-3 mt-7 pt-5 border-t border-line">
             <button onClick={doPreview} className="px-4 py-2.5 rounded-lg border border-line text-sm text-dim hover:text-text transition-colors">

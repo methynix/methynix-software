@@ -18,7 +18,6 @@ const run = async () => {
   }
 
   await connectDB();
-
   const hash = await bcrypt.hash(password, 12);
 
   await Admin.model.findOneAndUpdate(
