@@ -8,7 +8,7 @@ export const Footer = () => (
     <div className="max-w-page mx-auto px-5 md:px-8 py-14 grid grid-cols-1 md:grid-cols-12 gap-10">
       <div className="md:col-span-5">
         <div className="flex items-center gap-2.5 mb-4">
-          <img src="/logo-advanced.jpeg" alt="" className="h-8 w-8 rounded-full object-contain" />
+          <img src="/logo.png" alt="" className="h-8 w-8 rounded-full object-contain" />
           <span className="font-display text-lg font-semibold">{SITE.fullName}</span>
         </div>
         <p className="text-dim text-sm leading-relaxed max-w-xs">

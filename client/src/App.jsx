@@ -53,21 +53,18 @@ const NotFound = () => (
 const Shell = () => {
   const { pathname } = useLocation();
   const [maintenance, setMaintenance] = useState(false);
-  const [checked, setChecked] = useState(false);
 
   useEffect(() => {
+    // Check maintenance in the background. We never block the first paint on
+    // this — the site renders immediately and only flips to the maintenance
+    // page if the backend actually reports maintenance is on.
     apiClient
       .get("/site/status")
       .then((r) => setMaintenance(Boolean(r.data.maintenance)))
-      .catch(() => setMaintenance(false))
-      .finally(() => setChecked(true));
+      .catch(() => setMaintenance(false));
   }, []);
 
   const isAdmin = pathname.startsWith("/admin");
-
-  if (!checked) {
-    return <div className="min-h-screen flex items-center justify-center text-dim">Loading…</div>;
-  }
 
   if (maintenance && !isAdmin) {
     return <Maintenance />;
