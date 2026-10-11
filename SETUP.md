@@ -99,6 +99,42 @@ Set `JWT_SECRET` to a long random string (any 40+ random characters). Keep `.env
 
 ---
 
+## Staff dashboard (Headquarters)
+
+`/admin/dashboard` is now a full-screen app: Overview, Clients (pipeline), Finance, Projects, Infrastructure, Documents, Notes and Website.
+
+- **Client flow:** New lead → contacted/discovery → generate proposal → email it → accepted → generate contract → upload signed copy → record 40% deposit → technical document → in progress → delivered → completed (the client is emailed automatically).
+- **Brands:** every document can be generated as **Methynix** or **Kaspa**. Brand details live in `client/src/features/documents/brands.js`. Put the Kaspa logo at `client/public/kaspa-logo.png`.
+- **Money:** development payments split 50% savings / 10% Mastercard / 40% expenses (`server/config/finance.js`). Production costs are recorded as pass-through and never counted as revenue.
+
+### New `server/.env` values
+
+```
+# Cloudflare R2 (dash → R2 → Manage R2 API tokens → create token with Object Read & Write)
+R2_ACCOUNT_ID=8a20c60cecb23a2db89a3eb1a3c5482e
+R2_ACCESS_KEY_ID=
+R2_SECRET_ACCESS_KEY=
+R2_BUCKET=methynix-headquarter
+
+# Where deadline/renewal reminders go (defaults to MAIL_TO)
+REMINDER_EMAIL=
+# Optional: send Kaspa documents from a verified Kaspa domain in Resend
+MAIL_FROM_KASPA=
+# Secret for the external cron endpoint below
+CRON_SECRET=
+```
+
+### Reminders
+
+The server checks every 6 hours and emails one digest: client deadlines 7/3/1 days before, studio projects 7/1 days before, renewals 30/7/1 days before. If your host sleeps (free tiers), also add a free cron (e.g. cron-job.org) that calls daily:
+
+```
+POST https://<your-api>/api/v1/cron/reminders
+Header: x-cron-secret: <CRON_SECRET>
+```
+
+---
+
 ## Going live
 
 - **Frontend**: build with `npm run build` in `client/` and deploy the `dist/` folder (Netlify config is already included). Set `VITE_API_URL` to your live backend URL, e.g. `https://api.yourdomain.com/api/v1`.

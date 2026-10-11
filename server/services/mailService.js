@@ -40,6 +40,97 @@ const clientHtml = (d) => `
   </div>
 `;
 
+// Documents can go out under either brand. Kaspa mail uses its own sender when
+// one is configured (the domain must be verified in Resend), else the default.
+const BRAND_MAIL = {
+  methynix: { name: "Methynix Software", from: () => FROM },
+  kaspa: { name: "Kaspa Technologies", from: () => process.env.MAIL_FROM_KASPA || FROM },
+};
+const brandMail = (brand) => BRAND_MAIL[brand] || BRAND_MAIL.methynix;
+
+const REMINDER_TO = () => process.env.REMINDER_EMAIL || TO;
+
+const shell = (inner, signature) => `
+  <div style="font-family: Arial, Helvetica, sans-serif; max-width: 560px; margin: 0 auto; color: #1a1d22;">
+    ${inner}
+    <p style="font-size: 14px; line-height: 1.6; margin-top: 24px;">— ${escape(signature)}</p>
+  </div>
+`;
+
+const paragraphs = (text = "") =>
+  String(text)
+    .split(/\n{2,}/)
+    .map((p) => `<p style="font-size: 14px; line-height: 1.6; white-space: pre-wrap;">${escape(p.trim())}</p>`)
+    .join("");
+
+const send = async (payload) => {
+  const { error } = await resend.emails.send(payload);
+  if (error) throw new Error(error.message);
+};
+
+// A proposal, contract, technical document or receipt sent to a client with
+// the PDF attached.
+exports.sendClientDocument = async ({ brand, to, subject, message, attachment }) => {
+  const b = brandMail(brand);
+  await send({
+    from: b.from(),
+    to,
+    replyTo: TO || undefined,
+    subject,
+    html: shell(paragraphs(message), b.name),
+    attachments: attachment ? [{ filename: attachment.filename, content: attachment.content }] : undefined,
+  });
+};
+
+exports.sendProjectCompleted = async ({ brand, project }) => {
+  const b = brandMail(brand);
+  const inner = `
+    <h2 style="font-size: 18px;">Your project is complete</h2>
+    <p style="font-size: 14px; line-height: 1.6;">Hi ${escape(project.client.name || "there")},</p>
+    <p style="font-size: 14px; line-height: 1.6;">
+      We are happy to let you know that <strong>${escape(project.name)}</strong> has been completed and handed over.
+      Thank you for trusting us with it.
+    </p>
+    <p style="font-size: 14px; line-height: 1.6;">
+      If anything needs attention, just reply to this email and we will get on it.
+    </p>
+  `;
+  await send({
+    from: b.from(),
+    to: project.client.email,
+    replyTo: TO || undefined,
+    subject: `${project.name} is complete — ${b.name}`,
+    html: shell(inner, b.name),
+  });
+};
+
+// One digest email listing everything that needs attention soon.
+exports.sendReminderDigest = async (items) => {
+  const to = REMINDER_TO();
+  if (!to) throw new Error("Set REMINDER_EMAIL or MAIL_TO to receive reminders.");
+  const rows = items
+    .map(
+      (i) => `
+      <tr>
+        <td style="padding: 8px 6px; border-bottom: 1px solid #eee; font-size: 13px; color: #6b7280;">${escape(i.group)}</td>
+        <td style="padding: 8px 6px; border-bottom: 1px solid #eee; font-size: 14px;"><strong>${escape(i.title)}</strong><br/><span style="color:#6b7280; font-size: 12px;">${escape(i.detail || "")}</span></td>
+        <td style="padding: 8px 6px; border-bottom: 1px solid #eee; font-size: 13px; white-space: nowrap; color: ${i.overdue ? "#b91c1c" : "#1a1d22"};">${escape(i.when)}</td>
+      </tr>`
+    )
+    .join("");
+  const inner = `
+    <h2 style="font-size: 18px; margin: 0 0 4px;">Things that need your attention</h2>
+    <p style="color: #6b7280; margin: 0 0 16px; font-size: 13px;">From the Methynix dashboard.</p>
+    <table style="width: 100%; border-collapse: collapse;">${rows}</table>
+  `;
+  await send({
+    from: FROM,
+    to,
+    subject: `Reminder: ${items.length} item${items.length === 1 ? "" : "s"} due soon`,
+    html: shell(inner, "Methynix dashboard"),
+  });
+};
+
 exports.sendContactEmail = async (data) => {
   if (!TO) {
     throw new Error("MAIL_TO is not set.");

@@ -1,22 +1,18 @@
-// Company details used on the letterhead of every generated document.
+import { BRANDS } from "./brands";
+
+// Company details used on the letterhead of receipts and older documents.
+// Brand-aware documents read from brands.js instead.
 export const COMPANY = {
-  name: "METHYNIX SOFTWARE",
-  shortName: "Methynix Software Company",
-  tagline: "Creative & Technology Solutions",
-  registration: "BN633674",
+  ...BRANDS.methynix,
+  shortName: BRANDS.methynix.legalName,
   location: "Dodoma, Tanzania",
-  website: "www.methynix.com",
-  email: "info@methynix.com",
-  phone: "0715 455 422",
-  operator: "Helen James Method",
-  paymentMobile: "0715 455 422 (Tigo Pesa)",
-  logo: "/logo.png",
 };
 
 export const DOC_TYPES = [
-  { key: "invoice", label: "Invoice", blurb: "Bill a client for services." },
+  { key: "proposal", label: "Proposal", blurb: "Project proposal (system overview) and costs." },
+  { key: "contract", label: "Contract", blurb: "Software development agreement." },
+  { key: "technical", label: "Technical doc", blurb: "System design document for the build." },
   { key: "receipt", label: "Receipt", blurb: "Confirm a payment received." },
-  { key: "contract", label: "Contract", blurb: "Master service agreement." },
 ];
 
-export const STATUS_OPTIONS = ["draft", "sent", "paid", "signed", "void"];
+export const STATUS_OPTIONS = ["draft", "sent", "accepted", "signed", "paid", "void"];

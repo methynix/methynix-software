@@ -1,5 +1,5 @@
 import { Document, Page, View, Text, Image } from "@react-pdf/renderer";
-import { COMPANY } from "../company";
+import { getBrand } from "../brands";
 import { formatTZS, formatDate, toNumber, amountInWords } from "../format";
 import { COLORS, base, Letterhead, Footer } from "./parts";
 
@@ -32,8 +32,9 @@ const Field = ({ label, value }) => (
   </View>
 );
 
-export const ReceiptPDF = ({ doc }) => {
+export const ReceiptPDF = ({ doc, assets = {} }) => {
   const d = doc.data || {};
+  const brand = getBrand(d.brand);
   const total = toNumber(d.totalAmount);
   const paid = toNumber(d.amountPaid);
   const balance = d.balanceDue !== undefined && d.balanceDue !== "" ? toNumber(d.balanceDue) : total - paid;
@@ -50,7 +51,7 @@ export const ReceiptPDF = ({ doc }) => {
   return (
     <Document title={`Receipt ${doc.number}`}>
       <Page size="A4" style={base.page}>
-        <Letterhead />
+        <Letterhead brand={brand} logo={assets.logo} />
         <View style={base.rule} />
 
         <View style={{ flexDirection: "row" }}>
@@ -93,7 +94,7 @@ export const ReceiptPDF = ({ doc }) => {
               <View style={{ height: 40 }} />
             )}
             <View style={{ borderTopWidth: 1, borderTopColor: COLORS.muted, paddingTop: 4 }}>
-              <Text style={base.small}>{d.receivedByName || COMPANY.operator}</Text>
+              <Text style={base.small}>{d.receivedByName || brand.operator}</Text>
               <Text style={[base.small, base.muted]}>Received by (Name & Signature)</Text>
             </View>
           </View>
@@ -108,7 +109,7 @@ export const ReceiptPDF = ({ doc }) => {
           Thank you for your business!
         </Text>
 
-        <Footer>{`${COMPANY.shortName} • ${COMPANY.website}`}</Footer>
+        <Footer>{`${brand.legalName} • ${brand.website}`}</Footer>
       </Page>
     </Document>
   );

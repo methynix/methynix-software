@@ -43,19 +43,22 @@ export const base = StyleSheet.create({
   },
 });
 
-// Standard letterhead: logo left, company block right.
-export const Letterhead = () => (
+// Standard letterhead: logo left, company block right. Pass a brand from
+// brands.js to switch company; `logo` is the pre-checked logo URL (null hides it).
+export const Letterhead = ({ brand = COMPANY, logo = COMPANY.logo }) => (
   <View style={{ flexDirection: "row", alignItems: "center" }}>
-    <Image src={COMPANY.logo} style={{ width: 72, height: 72, objectFit: "contain" }} />
-    <View style={{ marginLeft: 16, flexGrow: 1 }}>
-      <Text style={{ fontFamily: "Helvetica-Bold", fontSize: 18, color: COLORS.navy }}>
-        {COMPANY.name}
+    {logo ? <Image src={logo} style={{ width: 72, height: 72, objectFit: "contain" }} /> : null}
+    <View style={{ marginLeft: logo ? 16 : 0, flexGrow: 1 }}>
+      <Text style={{ fontFamily: "Helvetica-Bold", fontSize: 18, color: brand.colors?.dark || COLORS.navy }}>
+        {brand.name}
       </Text>
-      <Text style={{ fontSize: 10, color: COLORS.tealDeep, fontStyle: "italic" }}>
-        {COMPANY.tagline}
+      <Text style={{ fontSize: 10, color: brand.colors?.primary || COLORS.tealDeep, fontStyle: "italic" }}>
+        {brand.tagline}
       </Text>
       <Text style={{ fontSize: 8, color: COLORS.muted, marginTop: 3 }}>
-        Registration No. {COMPANY.registration} • {COMPANY.location} • {COMPANY.website}
+        {[brand.registration ? `Registration No. ${brand.registration}` : null, brand.city || brand.location, brand.website]
+          .filter(Boolean)
+          .join(" • ")}
       </Text>
     </View>
   </View>

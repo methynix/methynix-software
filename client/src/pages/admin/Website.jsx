@@ -1,18 +1,11 @@
-import { useEffect, useState, lazy, Suspense } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 import apiClient from "../../api/apiClient";
-import { useAuth } from "../../context/AuthContext";
 import { useUI } from "../../context/UIContext";
 import { Input } from "../../components/ui/Input";
-import { SITE } from "../../constants/site";
+import { PageHeader } from "./ui";
 
-// The documents feature pulls in the heavy PDF renderer, so load it only when
-// the admin opens its tab — keeps it out of the bundle every visitor downloads.
-const DocumentsPanel = lazy(() =>
-  import("../../features/documents/DocumentsPanel").then((m) => ({ default: m.DocumentsPanel }))
-);
-
-const TABS = ["Documents", "What's new", "Work", "Site"];
+// The public website: What's new posts, the Work portfolio and maintenance mode.
+const TABS = ["What's new", "Work", "Site"];
 
 const emptyPost = { title: "", body: "", image_url: "" };
 const emptyProject = { name: "", type: "web", summary: "", url: "", image_url: "" };
@@ -236,53 +229,23 @@ const SitePanel = ({ showToast }) => {
   );
 };
 
-export const Dashboard = () => {
-  const { logout } = useAuth();
+export const Website = () => {
   const { showToast } = useUI();
-  const navigate = useNavigate();
   const [tab, setTab] = useState(TABS[0]);
 
-  const signOut = () => {
-    logout();
-    navigate("/admin");
-  };
-
   return (
-    <div className="max-w-page mx-auto px-5 md:px-8 py-10">
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <div>
-          <p className="eyebrow mb-2">Staff portal</p>
-          <h1 className="font-display text-3xl font-semibold">{SITE.name} dashboard</h1>
-        </div>
-        <button onClick={signOut} className="text-sm text-dim hover:text-text border border-line rounded-lg px-4 py-2 transition-colors">
-          Sign out
-        </button>
-      </div>
-
-      <div className="flex gap-1 mt-8 border-b border-line">
+    <>
+      <PageHeader title="Website" subtitle="What visitors see on methynix.com." />
+      <div className="flex flex-wrap gap-1 rounded-xl border border-line bg-surface p-1 w-fit mb-6">
         {TABS.map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`px-4 py-3 text-sm font-medium border-b-2 -mb-px transition-colors ${
-              tab === t ? "border-accent text-text" : "border-transparent text-dim hover:text-text"
-            }`}
-          >
+          <button key={t} onClick={() => setTab(t)} className={`px-4 py-2 rounded-lg text-sm ${tab === t ? "bg-raised text-text" : "text-dim hover:text-text"}`}>
             {t}
           </button>
         ))}
       </div>
-
-      <div className="mt-8">
-        {tab === "Documents" ? (
-          <Suspense fallback={<p className="text-dim text-sm">Loading document tools…</p>}>
-            <DocumentsPanel showToast={showToast} />
-          </Suspense>
-        ) : null}
-        {tab === "What's new" ? <PostsPanel showToast={showToast} /> : null}
-        {tab === "Work" ? <ProjectsPanel showToast={showToast} /> : null}
-        {tab === "Site" ? <SitePanel showToast={showToast} /> : null}
-      </div>
-    </div>
+      {tab === "What's new" ? <PostsPanel showToast={showToast} /> : null}
+      {tab === "Work" ? <ProjectsPanel showToast={showToast} /> : null}
+      {tab === "Site" ? <SitePanel showToast={showToast} /> : null}
+    </>
   );
 };

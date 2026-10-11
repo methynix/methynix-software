@@ -30,15 +30,26 @@ app.use(
   })
 );
 
-// Documents can carry base64 signature images, so allow a larger body here.
+// The admin API receives PDFs, uploads and documents with embedded diagrams
+// as base64, so it gets a much larger body limit than the public routes.
+app.use("/api/v1/admin", express.json({ limit: "30mb" }));
 app.use(express.json({ limit: "3mb" }));
 
-const limiter = rateLimit({
+const publicLimiter = rateLimit({
   max: 60,
   windowMs: 15 * 60 * 1000,
   message: { status: "fail", message: "Too many requests. Please try again later." },
 });
-app.use("/api", limiter);
+// The signed-in dashboard makes many requests per page, so it gets a roomier
+// budget. Login has its own strict limiter in adminRoutes.
+const adminLimiter = rateLimit({
+  max: 1500,
+  windowMs: 15 * 60 * 1000,
+  message: { status: "fail", message: "Too many requests. Please slow down a little." },
+});
+app.use("/api", (req, res, next) =>
+  (req.path.startsWith("/v1/admin") ? adminLimiter : publicLimiter)(req, res, next)
+);
 
 app.get("/api/health", (req, res) => res.json({ status: "ok" }));
 

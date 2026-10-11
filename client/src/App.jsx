@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import apiClient from "./api/apiClient";
 import { UIProvider } from "./context/UIContext";
@@ -15,7 +15,22 @@ import { Maintenance } from "./pages/Maintenance";
 import { Login } from "./pages/admin/Login";
 import { Terms } from "./pages/Terms";
 import { Privacy } from "./pages/Privacy";
-import { Dashboard } from "./pages/admin/Dashboard";
+
+// The staff dashboard (and its PDF tooling) loads only after sign-in, so
+// public visitors never download it.
+const named = (loader, name) => lazy(() => loader().then((m) => ({ default: m[name] })));
+const AdminLayout = named(() => import("./pages/admin/AdminLayout"), "AdminLayout");
+const Overview = named(() => import("./pages/admin/Overview"), "Overview");
+const Clients = named(() => import("./pages/admin/Clients"), "Clients");
+const ClientDetail = named(() => import("./pages/admin/ClientDetail"), "ClientDetail");
+const Finance = named(() => import("./pages/admin/Finance"), "Finance");
+const Projects = named(() => import("./pages/admin/Projects"), "Projects");
+const Infrastructure = named(() => import("./pages/admin/Infrastructure"), "Infrastructure");
+const Documents = named(() => import("./pages/admin/Documents"), "Documents");
+const Notes = named(() => import("./pages/admin/Notes"), "Notes");
+const Website = named(() => import("./pages/admin/Website"), "Website");
+
+const AdminFallback = () => <div className="min-h-screen grid place-items-center text-dim text-sm">Loading dashboard…</div>;
 
 const ScrollToTop = () => {
   const { pathname } = useLocation();
@@ -83,7 +98,26 @@ const Shell = () => {
         <Route path="/terms" element={<PublicLayout><Terms /></PublicLayout>} />
 <Route path="/privacy" element={<PublicLayout><Privacy /></PublicLayout>} />
         <Route path="/admin" element={<AdminGate />} />
-        <Route path="/admin/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
+        <Route
+          path="/admin/dashboard"
+          element={
+            <RequireAuth>
+              <Suspense fallback={<AdminFallback />}>
+                <AdminLayout />
+              </Suspense>
+            </RequireAuth>
+          }
+        >
+          <Route index element={<Overview />} />
+          <Route path="clients" element={<Clients />} />
+          <Route path="clients/:id" element={<ClientDetail />} />
+          <Route path="finance" element={<Finance />} />
+          <Route path="projects" element={<Projects />} />
+          <Route path="infrastructure" element={<Infrastructure />} />
+          <Route path="documents" element={<Documents />} />
+          <Route path="notes" element={<Notes />} />
+          <Route path="website" element={<Website />} />
+        </Route>
         <Route path="*" element={<PublicLayout><NotFound /></PublicLayout>} />
       </Routes>
     </>

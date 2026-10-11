@@ -1,13 +1,17 @@
 const mongoose = require("mongoose");
 const Counter = require("./counterModel");
 
-const DOC_TYPES = ["invoice", "receipt", "contract"];
+// "invoice" stays valid so older saved invoices still load; the dashboard no
+// longer creates new ones.
+const DOC_TYPES = ["invoice", "receipt", "contract", "proposal", "technical"];
 
 // How each document type's reference number is formatted.
 const NUMBER_CONFIG = {
   invoice: { prefix: "MTX-", pad: 4 },
   receipt: { prefix: "MTX-R", pad: 4 },
   contract: { prefix: "MTX-C", pad: 4 },
+  proposal: { prefix: "MTX-P", pad: 4 },
+  technical: { prefix: "MTX-T", pad: 4 },
 };
 
 const documentSchema = new mongoose.Schema({
@@ -15,6 +19,8 @@ const documentSchema = new mongoose.Schema({
   number: { type: String, required: true, unique: true },
   seq: { type: Number },
   title: { type: String, default: "" },
+  // The pipeline project this document belongs to, if any.
+  project_id: { type: String, default: null },
   client: {
     name: { type: String, default: "" },
     email: { type: String, default: "" },
@@ -27,7 +33,7 @@ const documentSchema = new mongoose.Schema({
   total: { type: Number, default: 0 },
   status: {
     type: String,
-    enum: ["draft", "sent", "paid", "signed", "void"],
+    enum: ["draft", "sent", "accepted", "paid", "signed", "void"],
     default: "draft",
   },
   created_at: { type: Date, default: Date.now },
@@ -47,6 +53,7 @@ const serialize = (d) => ({
   number: d.number,
   seq: d.seq,
   title: d.title || "",
+  project_id: d.project_id || null,
   client: {
     name: d.client?.name || "",
     email: d.client?.email || "",
@@ -70,16 +77,18 @@ exports.nextNumber = async (type) => {
 exports.all = async (filter = {}) => {
   const query = {};
   if (filter.type && DOC_TYPES.includes(filter.type)) query.type = filter.type;
+  if (filter.project_id) query.project_id = filter.project_id;
   const docs = await DocumentModel.find(query).sort({ created_at: -1 }).lean();
   return docs.map(serialize);
 };
 
 exports.findById = async (id) => {
+  if (!mongoose.isValidObjectId(id)) return null;
   const doc = await DocumentModel.findById(id).lean();
   return doc ? serialize(doc) : null;
 };
 
-exports.create = async ({ type, title, client, data, total, status }) => {
+exports.create = async ({ type, title, project_id, client, data, total, status }) => {
   const seq = await Counter.next(type);
   const number = formatNumber(type, seq);
   const doc = await DocumentModel.create({
@@ -87,6 +96,7 @@ exports.create = async ({ type, title, client, data, total, status }) => {
     number,
     seq,
     title: title || "",
+    project_id: project_id || null,
     client: client || {},
     data: data || {},
     total: total || 0,
@@ -96,6 +106,7 @@ exports.create = async ({ type, title, client, data, total, status }) => {
 };
 
 exports.update = async (id, { title, client, data, total, status }) => {
+  if (!mongoose.isValidObjectId(id)) return null;
   const patch = { updated_at: new Date() };
   if (title !== undefined) patch.title = title;
   if (client !== undefined) patch.client = client;

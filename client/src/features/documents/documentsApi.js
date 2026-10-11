@@ -16,3 +16,5 @@ export const updateDocument = (id, payload) =>
 
 export const deleteDocument = (id) =>
   apiClient.delete(`/admin/documents/${id}`).then((r) => r.data);
+
+export const getDocument = (id) => apiClient.get(`/admin/documents/${id}`).then((r) => r.data.data);

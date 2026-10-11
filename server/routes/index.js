@@ -4,6 +4,7 @@ const adminRoutes = require("./adminRoutes");
 const projectController = require("../controllers/projectController");
 const postController = require("../controllers/postController");
 const settingsController = require("../controllers/settingsController");
+const overviewController = require("../controllers/overviewController");
 
 const router = express.Router();
 
@@ -12,5 +13,6 @@ router.get("/posts", postController.list);
 router.get("/site/status", settingsController.status);
 router.use("/contact", contactRoutes);
 router.use("/admin", adminRoutes);
+router.post("/cron/reminders", overviewController.cronReminders);
 
 module.exports = router;
