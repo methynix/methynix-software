@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState, lazy, Suspense } from "react"
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { clientsApi, paymentsApi, fileToBase64 } from "../../api/adminApi";
 import { useUI } from "../../context/UIContext";
-import { PageHeader, Card, Button, Dialog, Field, Select, Pill, Loading, Empty, money, fmtDate, toInputDate, dueLabel, dueTone } from "./ui";
+import { SkeletonClientDetail, SkeletonEditor } from "../../components/ui/Skeleton";
+import { PageHeader, Card, Button, Dialog, Field, Select, Pill, Empty, money, fmtDate, toInputDate, dueLabel, dueTone } from "./ui";
 import { STAGES, stage, FILE_CATEGORIES } from "./constants";
 import { LeadForm, leadPayload } from "./LeadForm";
 import { BRAND_LIST, getBrand } from "../../features/documents/brands";
@@ -59,7 +60,7 @@ export const ClientDetail = () => {
     if (scrollTick) editorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [scrollTick]);
 
-  if (!project) return <Loading />;
+  if (!project) return <SkeletonClientDetail />;
 
   const s = stage(project.status);
   const deposit = Math.round(project.quote * DEPOSIT_RATE);
@@ -289,7 +290,7 @@ export const ClientDetail = () => {
       <div ref={editorRef}>
         {doc ? (
           <div className="rounded-2xl border border-accent/30 bg-surface p-5 md:p-7 mb-4">
-            <Suspense fallback={<Loading />}>
+            <Suspense fallback={<SkeletonEditor />}>
               <DocumentEditor
                 doc={doc.working}
                 docId={doc.docId}

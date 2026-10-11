@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { overviewApi } from "../../api/adminApi";
 import { useUI } from "../../context/UIContext";
-import { PageHeader, Card, Stat, Button, Empty, Pill, Loading, money, shortMoney, fmtDate, dueLabel, dueTone } from "./ui";
+import { SkeletonOverview } from "../../components/ui/Skeleton";
+import { PageHeader, Card, Stat, Button, Empty, Pill, money, shortMoney, fmtDate, dueLabel, dueTone } from "./ui";
 import { STAGES } from "./constants";
 
 const MONTH = (key) => new Date(`${key}-01T00:00:00`).toLocaleDateString("en-GB", { month: "short" });
@@ -79,7 +80,7 @@ export const Overview = () => {
     }
   };
 
-  if (!data) return <Loading />;
+  if (!data) return <SkeletonOverview />;
   const t = data.totals;
   const pct = (k) => `${Math.round(data.split[k] * 100)}%`;
   const funnel = STAGES.filter((s) => !["on_hold", "lost"].includes(s.key));

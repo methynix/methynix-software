@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import apiClient from "../api/apiClient";
+import { SkeletonPosts } from "../components/ui/Skeleton";
 import { Doll } from "../components/Doll";
 
 const formatDate = (value) => {
@@ -39,7 +40,7 @@ export const WhatsNew = () => {
 
       <div className="mt-14">
         {loading ? (
-          <p className="text-dim">Loading…</p>
+          <SkeletonPosts />
         ) : posts.length === 0 ? (
           <div className="flex flex-col items-center text-center py-16">
             <Doll className="w-44 h-48" />

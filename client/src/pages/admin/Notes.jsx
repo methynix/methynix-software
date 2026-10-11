@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { notesApi } from "../../api/adminApi";
 import { useUI } from "../../context/UIContext";
-import { PageHeader, Button, Dialog, Field, Empty, Loading, fmtDate } from "./ui";
+import { SkeletonNotes } from "../../components/ui/Skeleton";
+import { PageHeader, Button, Dialog, Field, Empty, fmtDate } from "./ui";
 
 export const Notes = () => {
   const { showToast } = useUI();
@@ -36,7 +37,7 @@ export const Notes = () => {
     load();
   };
 
-  if (!notes) return <Loading />;
+  if (!notes) return <SkeletonNotes />;
   const q = query.trim().toLowerCase();
   const shown = notes.filter((n) => !q || `${n.title} ${n.body}`.toLowerCase().includes(q));
 

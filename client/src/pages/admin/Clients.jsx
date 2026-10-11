@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { clientsApi } from "../../api/adminApi";
 import { useUI } from "../../context/UIContext";
-import { PageHeader, Button, Dialog, Pill, Empty, Loading, money, fmtDate, dueLabel, dueTone } from "./ui";
+import { SkeletonBoard } from "../../components/ui/Skeleton";
+import { PageHeader, Button, Dialog, Pill, Empty, money, fmtDate, dueLabel, dueTone } from "./ui";
 import { BOARD, STAGES, stage } from "./constants";
 import { LeadForm, emptyLead, leadPayload } from "./LeadForm";
 
@@ -104,7 +105,7 @@ export const Clients = () => {
       </div>
 
       {!projects ? (
-        <Loading />
+        <SkeletonBoard />
       ) : projects.length === 0 ? (
         <Empty>No clients yet. Create your first lead when someone gets in touch.</Empty>
       ) : view === "board" ? (

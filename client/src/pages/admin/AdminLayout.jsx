@@ -2,7 +2,7 @@ import { useState, Suspense } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { SITE } from "../../constants/site";
-import { Loading } from "./ui";
+import { SkeletonPage } from "../../components/ui/Skeleton";
 
 const icon = (d) => (
   <svg viewBox="0 0 24 24" className="h-[18px] w-[18px] shrink-0" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -99,7 +99,7 @@ export const AdminLayout = () => {
 
       <main className="flex-1 min-w-0 px-4 md:px-8 py-6 md:py-8">
         <div className="max-w-[1400px] mx-auto">
-          <Suspense fallback={<Loading />}>
+          <Suspense fallback={<SkeletonPage />}>
             <Outlet />
           </Suspense>
         </div>

@@ -6,6 +6,7 @@ import { formatTZS, formatDate } from "./format";
 import { downloadPdf } from "./pdf/render";
 import { DocumentEditor, BrandSwitch } from "./DocumentEditor";
 import { listDocuments, updateDocument, deleteDocument } from "./documentsApi";
+import { SkeletonTable } from "../../components/ui/Skeleton";
 
 export const StatusPill = ({ status }) => {
   const tone =
@@ -26,7 +27,7 @@ export const DocumentsPanel = ({ showToast }) => {
   const [brand, setBrand] = useState("methynix");
   const [working, setWorking] = useState(null);
   const [editingId, setEditingId] = useState(null);
-  const [docs, setDocs] = useState([]);
+  const [docs, setDocs] = useState(null);
 
   const loadList = useCallback(
     (t) => listDocuments(t).then(setDocs).catch((e) => showToast(e.message, "error")),
@@ -40,6 +41,7 @@ export const DocumentsPanel = ({ showToast }) => {
   const switchType = (t) => {
     setWorking(null);
     setEditingId(null);
+    setDocs(null);
     setType(t);
   };
 
@@ -126,7 +128,9 @@ export const DocumentsPanel = ({ showToast }) => {
 
       <div>
         <h2 className="font-display text-lg font-semibold mb-3">Saved {label.toLowerCase()}s</h2>
-        {docs.length === 0 ? (
+        {!docs ? (
+          <SkeletonTable rows={4} cols={3} />
+        ) : docs.length === 0 ? (
           <p className="text-dim text-sm">Nothing saved yet.</p>
         ) : (
           <div className="rounded-2xl border border-line bg-surface divide-y divide-line">

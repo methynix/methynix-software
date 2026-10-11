@@ -1,6 +1,7 @@
 import { useEffect, useState, lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import apiClient from "./api/apiClient";
+import { SkeletonDashboardShell } from "./components/ui/Skeleton";
 import { UIProvider } from "./context/UIContext";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { Navbar } from "./components/Navbar";
@@ -30,7 +31,6 @@ const Documents = named(() => import("./pages/admin/Documents"), "Documents");
 const Notes = named(() => import("./pages/admin/Notes"), "Notes");
 const Website = named(() => import("./pages/admin/Website"), "Website");
 
-const AdminFallback = () => <div className="min-h-screen grid place-items-center text-dim text-sm">Loading dashboard…</div>;
 
 const ScrollToTop = () => {
   const { pathname } = useLocation();
@@ -102,7 +102,7 @@ const Shell = () => {
           path="/admin/dashboard"
           element={
             <RequireAuth>
-              <Suspense fallback={<AdminFallback />}>
+              <Suspense fallback={<SkeletonDashboardShell />}>
                 <AdminLayout />
               </Suspense>
             </RequireAuth>

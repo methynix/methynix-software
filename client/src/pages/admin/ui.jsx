@@ -144,5 +144,3 @@ export const Dialog = ({ open, onClose, title, children, footer, wide }) => (
     ) : null}
   </AnimatePresence>
 );
-
-export const Loading = () => <p className="text-dim text-sm">Loading…</p>;

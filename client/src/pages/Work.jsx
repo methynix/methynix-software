@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import apiClient from "../api/apiClient";
 import { ProjectThumb } from "../components/ProjectThumb";
 import { Modal } from "../components/ui/Modal";
+import { SkeletonWorkGrid } from "../components/ui/Skeleton";
 import { Button } from "../components/ui/Button";
 
 const typeLabel = {
@@ -91,7 +92,7 @@ export const Work = () => {
         </div>
 
         {loading ? (
-          <p className="text-dim">Loading work…</p>
+          <SkeletonWorkGrid />
         ) : projects.length === 0 ? (
           <div className="rounded-xl border border-dashed border-line bg-surface px-6 py-14 text-center">
             <p className="font-display text-xl">Our first projects are being added here.</p>

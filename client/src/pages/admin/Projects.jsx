@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { studioApi, clientsApi } from "../../api/adminApi";
 import { useUI } from "../../context/UIContext";
-import { PageHeader, Button, Dialog, Field, Select, Pill, Empty, Loading, fmtDate, toInputDate, dueLabel, dueTone } from "./ui";
+import { SkeletonProjects } from "../../components/ui/Skeleton";
+import { PageHeader, Button, Dialog, Field, Select, Pill, Empty, fmtDate, toInputDate, dueLabel, dueTone } from "./ui";
 import { stage } from "./constants";
 
 const TABS = [
@@ -64,7 +65,7 @@ export const Projects = () => {
     load();
   };
 
-  if (!items) return <Loading />;
+  if (!items) return <SkeletonProjects />;
   const current = TABS.find((t) => t.key === tab);
   const list =
     tab === "client"

@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { overviewApi, paymentsApi, clientsApi } from "../../api/adminApi";
 import { useUI } from "../../context/UIContext";
-import { PageHeader, Card, Stat, Button, Dialog, Field, Select, Pill, Loading, money, fmtDate, toInputDate } from "./ui";
+import { SkeletonFinance } from "../../components/ui/Skeleton";
+import { PageHeader, Card, Stat, Button, Dialog, Field, Select, Pill, money, fmtDate, toInputDate } from "./ui";
 import { RevenueChart } from "./Overview";
 
 const blank = () => ({ project_id: "", kind: "development", amount: "", date: toInputDate(new Date()), method: "Mobile money", reference: "", note: "", client_name: "" });
@@ -45,7 +46,7 @@ export const Finance = () => {
     load();
   };
 
-  if (!summary) return <Loading />;
+  if (!summary) return <SkeletonFinance />;
   const t = summary.totals;
   const pct = (k) => `${Math.round(summary.split[k] * 100)}%`;
   const billed = projects.filter((p) => p.quote && !["lost", "lead", "contacted", "discovery"].includes(p.status));

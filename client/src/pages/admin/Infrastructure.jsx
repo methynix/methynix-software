@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { infrastructureApi } from "../../api/adminApi";
 import { useUI } from "../../context/UIContext";
-import { PageHeader, Card, Stat, Button, Dialog, Field, Select, Pill, Empty, Loading, fmtDate, toInputDate, dueLabel, dueTone, daysUntil } from "./ui";
+import { SkeletonInfrastructure } from "../../components/ui/Skeleton";
+import { PageHeader, Card, Stat, Button, Dialog, Field, Select, Pill, Empty, fmtDate, toInputDate, dueLabel, dueTone, daysUntil } from "./ui";
 
 const KINDS = [
   { value: "domain", label: "Domain" },
@@ -46,7 +47,7 @@ export const Infrastructure = () => {
     load();
   };
 
-  if (!items) return <Loading />;
+  if (!items) return <SkeletonInfrastructure />;
 
   const soon = items.filter((i) => i.expires_at && daysUntil(i.expires_at) <= 30);
   const monthlyUSD = items
