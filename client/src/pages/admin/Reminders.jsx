@@ -4,12 +4,10 @@ import { useUI } from "../../context/UIContext";
 import { PageHeader, Card, Stat, Button, Dialog, Field, Pill, Empty, fmtDate, dueLabel, dueTone, daysUntil } from "./ui";
 
 const toInputDateTime = (d) => {
+  const date = d ? new Date(d) : new Date(Date.now() + 24 * 60 * 60 * 1000);
   if (!d) {
-    const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
-    tomorrow.setHours(9, 0, 0, 0);
-    return tomorrow.toISOString().slice(0, 16);
+    date.setHours(9, 0, 0, 0);
   }
-  const date = new Date(d);
   const pad = (n) => String(n).padStart(2, "0");
   const yr = date.getFullYear();
   const mo = pad(date.getMonth() + 1);
@@ -51,19 +49,31 @@ export const Reminders = () => {
     if (!form.body.trim()) return showToast("Add the reminder message body.", "error");
     if (!form.due_date) return showToast("Choose a date for the reminder.", "error");
 
+    const localDate = new Date(form.due_date);
+    if (isNaN(localDate.getTime())) {
+      return showToast("Please select a valid date and time.", "error");
+    }
+
+    // Convert local browser date/time to UTC ISO string so timezone is preserved accurately
+    const payload = {
+      ...form,
+      due_date: localDate.toISOString(),
+    };
+
     setBusy("save");
     try {
       if (form.id) {
-        await remindersApi.update(form.id, form);
+        await remindersApi.update(form.id, payload);
         showToast("Reminder updated.");
       } else {
-        await remindersApi.create(form);
-        const formattedDate = new Date(form.due_date).toLocaleDateString("en-GB", {
+        await remindersApi.create(payload);
+        const formattedDate = localDate.toLocaleDateString("en-GB", {
           day: "numeric",
           month: "short",
           year: "numeric",
         });
-        showToast(`Scheduled! Email will automatically send on ${formattedDate}.`);
+        const formattedTime = localDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        showToast(`Scheduled! Email will automatically send on ${formattedDate} at ${formattedTime}.`);
       }
       setForm(null);
       load();
@@ -326,7 +336,7 @@ export const Reminders = () => {
                 type="datetime-local"
                 value={form.due_date}
                 onChange={(e) => setForm({ ...form, due_date: e.target.value })}
-                hint="When the email should automatically arrive in your inbox"
+                hint={`Scheduled in your local time (${Intl.DateTimeFormat().resolvedOptions().timeZone || "Local time"})`}
               />
               <Field
                 label="Recipient (Where to receive it)"
