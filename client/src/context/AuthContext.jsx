@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback } from "react";
+import { createContext, useContext, useState, useCallback, useEffect } from "react";
 
 const AuthContext = createContext(null);
 
@@ -13,6 +13,14 @@ export const AuthProvider = ({ children }) => {
   const logout = useCallback(() => {
     localStorage.removeItem("methynix_token");
     setToken(null);
+  }, []);
+
+  useEffect(() => {
+    const handleExpired = () => {
+      setToken(null);
+    };
+    window.addEventListener("methynix:auth-expired", handleExpired);
+    return () => window.removeEventListener("methynix:auth-expired", handleExpired);
   }, []);
 
   return (

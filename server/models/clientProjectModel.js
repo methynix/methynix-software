@@ -192,9 +192,13 @@ exports.addFile = async (id, file) => {
 };
 
 exports.removeFile = async (id, fileId) => {
+  if (!mongoose.isValidObjectId(id)) return null;
+  const query = mongoose.isValidObjectId(fileId)
+    ? { _id: new mongoose.Types.ObjectId(String(fileId)) }
+    : { _id: fileId };
   const doc = await ClientProject.findByIdAndUpdate(
     id,
-    { $pull: { files: { _id: fileId } }, updated_at: new Date() },
+    { $pull: { files: query }, updated_at: new Date() },
     { new: true }
   ).lean();
   return doc ? serialize(doc) : null;

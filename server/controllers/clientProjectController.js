@@ -39,8 +39,15 @@ const uniqueFolder = async (name) => {
 };
 
 const loadProject = async (id, next) => {
+  if (!id || typeof id !== "string") {
+    next(new AppError("Invalid project ID.", 400));
+    return null;
+  }
   const project = await ClientProject.findById(id);
-  if (!project) next(new AppError("Project not found.", 404));
+  if (!project) {
+    next(new AppError("Project not found.", 404));
+    return null;
+  }
   return project;
 };
 

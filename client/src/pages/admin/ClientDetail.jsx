@@ -104,6 +104,13 @@ export const ClientDetail = () => {
     // The proposal sets the price until a contract exists; the contract is final.
     if ((saved.type === "contract" || (saved.type === "proposal" && !project.contract_doc_id)) && saved.total) patch.quote = saved.total;
     if (Object.keys(patch).length) await clientsApi.update(project.id, patch);
+
+    // If this document was a receipt for a payment, link it to the payment
+    const paymentId = doc?.working?.paymentId || doc?.paymentId || doc?.working?.data?.paymentId || saved.data?.paymentId;
+    if (saved.type === "receipt" && paymentId) {
+      await paymentsApi.update(paymentId, { receipt_doc_id: saved.id });
+    }
+
     await load();
   };
 
@@ -160,6 +167,7 @@ export const ClientDetail = () => {
     };
     w.total = project.quote || p.amount;
     w.paymentId = p.id;
+    w.data.paymentId = p.id;
     openEditor(w);
   };
 

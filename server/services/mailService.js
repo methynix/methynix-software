@@ -105,6 +105,28 @@ exports.sendProjectCompleted = async ({ brand, project }) => {
 };
 
 // One digest email listing everything that needs attention soon.
+exports.sendCustomReminder = async ({ to, title, body, sender }) => {
+  const recipient = to || process.env.REMINDER_EMAIL || "methodhelen@gmail.com";
+  // The sender is info@methynix.com (or configured MAIL_FROM)
+  const fromAddress = FROM.includes("<") ? FROM : `Methynix <${sender || "info@methynix.com"}>`;
+
+  const inner = `
+    <h2 style="font-size: 18px; margin: 0 0 12px; color: #1a1d22;">${escape(title)}</h2>
+    <div style="margin: 16px 0; padding: 16px; background: #f8fafc; border-left: 4px solid #0d9488; border-radius: 4px;">
+      <p style="margin: 0; white-space: pre-wrap; font-size: 14px; line-height: 1.6; color: #1a1d22;">${escape(body)}</p>
+    </div>
+    <p style="font-size: 12px; color: #9ca3af; margin-top: 16px;">This reminder was scheduled in your Methynix Admin Panel.</p>
+  `;
+
+  await send({
+    from: fromAddress,
+    to: recipient,
+    replyTo: "info@methynix.com",
+    subject: `Reminder: ${title}`,
+    html: shell(inner, "Methynix Reminders"),
+  });
+};
+
 exports.sendReminderDigest = async (items) => {
   const to = REMINDER_TO();
   if (!to) throw new Error("Set REMINDER_EMAIL or MAIL_TO to receive reminders.");

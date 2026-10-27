@@ -15,6 +15,13 @@ apiClient.interceptors.request.use((config) => {
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
+    if (error.response?.status === 401 && !error.config?.url?.includes("/login")) {
+      localStorage.removeItem("methynix_token");
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("methynix:auth-expired"));
+      }
+    }
+
     const message =
       error.response?.data?.message ||
       "We could not reach the server. Please check your connection and try again.";

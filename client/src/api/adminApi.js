@@ -8,15 +8,24 @@ const data = (r) => r.data.data;
 const SLOW = { timeout: 120000 };
 
 const crud = (path) => ({
-  list: () => apiClient.get(`/admin/${path}`).then(data),
+  list: (params) => apiClient.get(`/admin/${path}`, { params }).then(data),
   create: (body) => apiClient.post(`/admin/${path}`, body).then(data),
   update: (id, body) => apiClient.patch(`/admin/${path}/${id}`, body).then(data),
   remove: (id) => apiClient.delete(`/admin/${path}/${id}`),
 });
 
+export const authApi = {
+  changePassword: (body) => apiClient.post("/admin/change-password", body).then((r) => r.data),
+};
+
 export const overviewApi = {
   get: () => apiClient.get("/admin/overview").then(data),
   runReminders: () => apiClient.post("/admin/reminders/run").then((r) => r.data),
+};
+
+export const remindersApi = {
+  ...crud("reminders"),
+  sendNow: (id) => apiClient.post(`/admin/reminders/${id}/send`).then((r) => r.data),
 };
 
 export const clientsApi = {

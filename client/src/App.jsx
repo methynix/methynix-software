@@ -24,6 +24,7 @@ const AdminLayout = named(() => import("./pages/admin/AdminLayout"), "AdminLayou
 const Overview = named(() => import("./pages/admin/Overview"), "Overview");
 const Clients = named(() => import("./pages/admin/Clients"), "Clients");
 const ClientDetail = named(() => import("./pages/admin/ClientDetail"), "ClientDetail");
+const Reminders = named(() => import("./pages/admin/Reminders"), "Reminders");
 const Finance = named(() => import("./pages/admin/Finance"), "Finance");
 const Projects = named(() => import("./pages/admin/Projects"), "Projects");
 const Infrastructure = named(() => import("./pages/admin/Infrastructure"), "Infrastructure");
@@ -111,6 +112,7 @@ const Shell = () => {
           <Route index element={<Overview />} />
           <Route path="clients" element={<Clients />} />
           <Route path="clients/:id" element={<ClientDetail />} />
+          <Route path="reminders" element={<Reminders />} />
           <Route path="finance" element={<Finance />} />
           <Route path="projects" element={<Projects />} />
           <Route path="infrastructure" element={<Infrastructure />} />

@@ -1,7 +1,9 @@
+const crypto = require("crypto");
 const ClientProject = require("../models/clientProjectModel");
 const StudioProject = require("../models/studioProjectModel");
 const Infrastructure = require("../models/infrastructureModel");
 const Payment = require("../models/paymentModel");
+const Reminder = require("../models/reminderModel");
 const reminders = require("../services/reminderService");
 const { SPLIT, DEPOSIT_RATE } = require("../config/finance");
 const AppError = require("../utils/appError");
@@ -14,11 +16,12 @@ const sumBy = (rows, fn) => rows.reduce((s, r) => s + (fn(r) || 0), 0);
 
 // Everything the dashboard home needs in one request.
 exports.overview = catchAsync(async (req, res) => {
-  const [projects, studio, infra, payments] = await Promise.all([
+  const [projects, studio, infra, payments, customReminders] = await Promise.all([
     ClientProject.all(),
     StudioProject.all(),
     Infrastructure.all(),
     Payment.all(),
+    Reminder.model.find({ status: "pending" }).lean(),
   ]);
 
   const dev = payments.filter((p) => p.kind === "development");
@@ -62,6 +65,9 @@ exports.overview = catchAsync(async (req, res) => {
     ...infra
       .filter((i) => within(i.expires_at, 45))
       .map((i) => ({ kind: "renewal", id: i.id, title: i.name, subtitle: `${i.kind} · ${i.provider || "—"}`, date: i.expires_at })),
+    ...customReminders
+      .filter((r) => within(r.due_date, 30))
+      .map((r) => ({ kind: "reminder", id: r._id.toString(), title: r.title, subtitle: r.body.slice(0, 45), date: r.due_date })),
   ].sort((a, b) => new Date(a.date) - new Date(b.date));
 
   res.status(200).json({
@@ -88,6 +94,7 @@ exports.overview = catchAsync(async (req, res) => {
         open_leads: projects.filter((p) => ["lead", "contacted", "discovery", "proposal_sent", "accepted", "contract_sent"].includes(p.status)).length,
         completed: pipeline.completed,
         studio_active: studio.filter((p) => p.status === "in_progress").length,
+        pending_reminders: customReminders.length,
       },
       pipeline,
       months,
@@ -106,9 +113,19 @@ exports.runReminders = catchAsync(async (req, res) => {
 // reminders still go out if the host sleeps between requests.
 exports.cronReminders = catchAsync(async (req, res, next) => {
   const secret = process.env.CRON_SECRET;
-  if (!secret || req.headers["x-cron-secret"] !== secret) {
+  const provided = req.headers["x-cron-secret"];
+
+  if (!secret || !provided || typeof provided !== "string") {
     return next(new AppError("Not allowed.", 401));
   }
+
+  const secretBuf = Buffer.from(secret);
+  const providedBuf = Buffer.from(provided);
+
+  if (secretBuf.length !== providedBuf.length || !crypto.timingSafeEqual(secretBuf, providedBuf)) {
+    return next(new AppError("Not allowed.", 401));
+  }
+
   const result = await reminders.run();
   res.status(200).json({ status: "success", ...result });
 });

@@ -76,8 +76,8 @@ exports.nextNumber = async (type) => {
 
 exports.all = async (filter = {}) => {
   const query = {};
-  if (filter.type && DOC_TYPES.includes(filter.type)) query.type = filter.type;
-  if (filter.project_id) query.project_id = filter.project_id;
+  if (filter.type && typeof filter.type === "string" && DOC_TYPES.includes(filter.type)) query.type = filter.type;
+  if (filter.project_id && typeof filter.project_id === "string") query.project_id = filter.project_id;
   const docs = await DocumentModel.find(query).sort({ created_at: -1 }).lean();
   return docs.map(serialize);
 };

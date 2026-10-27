@@ -1,7 +1,8 @@
 const ClientProject = require("../models/clientProjectModel");
 const StudioProject = require("../models/studioProjectModel");
 const Infrastructure = require("../models/infrastructureModel");
-const { sendReminderDigest } = require("./mailService");
+const Reminder = require("../models/reminderModel");
+const { sendReminderDigest, sendCustomReminder } = require("./mailService");
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -39,8 +40,36 @@ const collect = async (Model, query, dateField, thresholds, describe) => {
 };
 
 // Finds everything that crossed a reminder threshold, emails one digest and
-// marks those reminders as sent. Safe to call as often as you like.
+// marks those reminders as sent. Also processes custom user-created reminders.
 exports.run = async () => {
+  let customSent = 0;
+
+  // 1. Process custom scheduled reminders
+  try {
+    const dueCustom = await Reminder.model.find({
+      status: "pending",
+      due_date: { $lte: new Date() },
+    });
+
+    for (const r of dueCustom) {
+      try {
+        await sendCustomReminder({
+          to: r.recipient,
+          title: r.title,
+          body: r.body,
+          sender: r.sender,
+        });
+        await Reminder.markSent(r._id);
+        customSent++;
+      } catch (err) {
+        console.error(`[REMINDERS] Failed to send reminder "${r.title}":`, err.message);
+      }
+    }
+  } catch (err) {
+    console.error("[REMINDERS] Failed to check custom reminders:", err.message);
+  }
+
+  // 2. Process system deadline digests
   const groups = [
     {
       Model: ClientProject.model,
@@ -81,24 +110,43 @@ exports.run = async () => {
   ];
 
   const items = groups.flatMap((g) => g.due.map((d) => d.item));
-  if (items.length === 0) return { sent: 0 };
+  if (items.length > 0) {
+    try {
+      await sendReminderDigest(items);
+      await Promise.all(
+        groups.flatMap((g) => g.due.map((d) => g.Model.updateOne({ _id: d.id }, { $addToSet: { reminders_sent: d.key } })))
+      );
+    } catch (err) {
+      console.error("[REMINDERS] Failed to send reminder digest:", err.message);
+    }
+  }
 
-  await sendReminderDigest(items);
-
-  await Promise.all(
-    groups.flatMap((g) => g.due.map((d) => g.Model.updateOne({ _id: d.id }, { $addToSet: { reminders_sent: d.key } })))
-  );
-  return { sent: items.length };
+  return { sent: items.length + customSent, customSent, digestSent: items.length };
 };
 
-// In-process schedule. Hosts that sleep (free tiers) should also call
-// POST /api/v1/cron/reminders from an external cron; see SETUP.md.
+// Dispatch a single custom reminder immediately
+exports.sendSingleNow = async (id) => {
+  const r = await Reminder.findById(id);
+  if (!r) throw new Error("Reminder not found.");
+
+  await sendCustomReminder({
+    to: r.recipient,
+    title: r.title,
+    body: r.body,
+    sender: r.sender,
+  });
+
+  return Reminder.markSent(r.id);
+};
+
+// In-process schedule. Checks every 15 minutes for prompt delivery of custom reminders.
 exports.start = () => {
   const tick = () =>
     exports
       .run()
       .then((r) => r.sent && console.log(`[REMINDERS] Sent ${r.sent} reminder(s).`))
       .catch((err) => console.error("[REMINDERS] Failed:", err.message));
-  setTimeout(tick, 60 * 1000);
-  setInterval(tick, 6 * 60 * 60 * 1000);
+  setTimeout(tick, 30 * 1000);
+  // Check every 15 minutes so scheduled custom reminders fire promptly around their scheduled time
+  setInterval(tick, 15 * 60 * 1000);
 };

@@ -9,6 +9,7 @@ const documentController = require("../controllers/documentController");
 const clientProjectController = require("../controllers/clientProjectController");
 const paymentController = require("../controllers/paymentController");
 const overviewController = require("../controllers/overviewController");
+const reminderController = require("../controllers/reminderController");
 const crudController = require("../controllers/crudController");
 const Infrastructure = require("../models/infrastructureModel");
 const StudioProject = require("../models/studioProjectModel");
@@ -23,9 +24,18 @@ const loginLimiter = rateLimit({
   message: { status: "fail", message: "Too many sign-in attempts. Please try again later." },
 });
 
+// Password change limiter to prevent brute force
+const passwordLimiter = rateLimit({
+  max: 10,
+  windowMs: 15 * 60 * 1000,
+  message: { status: "fail", message: "Too many password change attempts. Please wait a while." },
+});
+
 router.post("/login", loginLimiter, authController.login);
 
 router.use(auth);
+
+router.post("/change-password", passwordLimiter, authController.changePassword);
 
 const crudRoutes = (path, controller) => {
   router.get(path, controller.list);
@@ -36,6 +46,14 @@ const crudRoutes = (path, controller) => {
 
 router.get("/overview", overviewController.overview);
 router.post("/reminders/run", overviewController.runReminders);
+
+// Custom scheduled reminders
+router.get("/reminders", reminderController.list);
+router.post("/reminders", reminderController.create);
+router.get("/reminders/:id", reminderController.getOne);
+router.patch("/reminders/:id", reminderController.update);
+router.delete("/reminders/:id", reminderController.remove);
+router.post("/reminders/:id/send", reminderController.sendNow);
 
 router.post("/posts", postController.create);
 router.delete("/posts/:id", postController.remove);

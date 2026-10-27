@@ -56,8 +56,14 @@ export const RevenueChart = ({ months }) => {
   );
 };
 
-const KIND_LABEL = { client: "Client", mother: "Mother", hobby: "Hobby", renewal: "Renewal" };
-const KIND_LINK = { client: (i) => `/admin/dashboard/clients/${i.id}`, mother: () => "/admin/dashboard/projects", hobby: () => "/admin/dashboard/projects", renewal: () => "/admin/dashboard/infrastructure" };
+const KIND_LABEL = { client: "Client", mother: "Mother", hobby: "Hobby", renewal: "Renewal", reminder: "Reminder" };
+const KIND_LINK = {
+  client: (i) => `/admin/dashboard/clients/${i.id}`,
+  mother: () => "/admin/dashboard/projects",
+  hobby: () => "/admin/dashboard/projects",
+  renewal: () => "/admin/dashboard/infrastructure",
+  reminder: () => "/admin/dashboard/reminders",
+};
 
 export const Overview = () => {
   const { showToast } = useUI();

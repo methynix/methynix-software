@@ -53,9 +53,15 @@ exports.KINDS = KINDS;
 
 exports.all = async (filter = {}) => {
   const query = {};
-  if (filter.project_id) query.project_id = filter.project_id;
+  if (filter.project_id && typeof filter.project_id === "string") query.project_id = filter.project_id;
   const docs = await Payment.find(query).sort({ date: -1, created_at: -1 }).lean();
   return docs.map(serialize);
+};
+
+exports.findById = async (id) => {
+  if (!mongoose.isValidObjectId(id)) return null;
+  const doc = await Payment.findById(id).lean();
+  return doc ? serialize(doc) : null;
 };
 
 exports.create = async (input) => {
