@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { remindersApi, overviewApi } from "../../api/adminApi";
+import { remindersApi } from "../../api/adminApi";
 import { useUI } from "../../context/UIContext";
 import { PageHeader, Card, Stat, Button, Dialog, Field, Pill, Empty, fmtDate, dueLabel, dueTone, daysUntil } from "./ui";
 
@@ -58,7 +58,12 @@ export const Reminders = () => {
         showToast("Reminder updated.");
       } else {
         await remindersApi.create(form);
-        showToast("Reminder scheduled.");
+        const formattedDate = new Date(form.due_date).toLocaleDateString("en-GB", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        });
+        showToast(`Scheduled! Email will automatically send on ${formattedDate}.`);
       }
       setForm(null);
       load();
@@ -81,28 +86,12 @@ export const Reminders = () => {
     }
   };
 
-  const sendNow = async (r) => {
+  const sendTestNow = async (r) => {
+    if (!window.confirm(`Send an early test copy of "${r.title}" to ${r.recipient} right now?`)) return;
     setBusy(`send-${r.id}`);
     try {
       const res = await remindersApi.sendNow(r.id);
-      showToast(res.message || `Reminder email sent to ${r.recipient}.`);
-      load();
-    } catch (e) {
-      showToast(e.message, "error");
-    } finally {
-      setBusy("");
-    }
-  };
-
-  const checkDueNow = async () => {
-    setBusy("checking");
-    try {
-      const res = await overviewApi.runReminders();
-      showToast(
-        res.sent
-          ? `Dispatched ${res.sent} due reminder${res.sent === 1 ? "" : "s"}.`
-          : "Checked: no reminders are currently due."
-      );
+      showToast(res.message || `Test reminder email sent to ${r.recipient}.`);
       load();
     } catch (e) {
       showToast(e.message, "error");
@@ -145,36 +134,38 @@ export const Reminders = () => {
     <>
       <PageHeader
         title="Reminders"
-        subtitle="Schedule email reminders sent directly from info@methynix.com to methodhelen@gmail.com."
+        subtitle="Automatic email scheduler: set the date and message, and an email will automatically be sent to methodhelen@gmail.com on that date."
         actions={
-          <>
-            <Button variant="ghost" onClick={checkDueNow} disabled={Boolean(busy)}>
-              {busy === "checking" ? "Checking…" : "Run check now"}
-            </Button>
-            <Button onClick={() => setForm(blankReminder())}>New reminder</Button>
-          </>
+          <Button onClick={() => setForm(blankReminder())}>
+            Schedule a reminder
+          </Button>
         }
       />
 
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 md:gap-4 mb-5">
         <Stat label="Total reminders" value={reminders.length} />
-        <Stat label="Pending" value={pending.length} tone={pending.length ? "sand" : "text"} hint="Waiting for scheduled date" />
+        <Stat
+          label="Auto-scheduled (Pending)"
+          value={pending.length}
+          tone={pending.length ? "sand" : "text"}
+          hint="Will send automatically on set date"
+        />
         <Stat label="Due in next 7 days" value={dueSoon.length} tone={dueSoon.length ? "accent" : "text"} />
-        <Stat label="Emails sent" value={sent.length} hint="Delivered to your inbox" />
+        <Stat label="Delivered" value={sent.length} hint="Delivered to your inbox" />
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search reminders by title or text…"
+          placeholder="Search scheduled reminders…"
           className="flex-1 min-w-[200px] max-w-sm bg-surface border border-line px-3 py-2 rounded-lg text-sm outline-none focus:border-accent"
         />
         <div className="inline-flex rounded-lg border border-line p-0.5 bg-surface">
           {[
             { id: "all", label: `All (${reminders.length})` },
-            { id: "pending", label: `Pending (${pending.length})` },
-            { id: "sent", label: `Sent (${sent.length})` },
+            { id: "pending", label: `Auto-scheduled (${pending.length})` },
+            { id: "sent", label: `Delivered (${sent.length})` },
           ].map((t) => (
             <button
               key={t.id}
@@ -194,10 +185,10 @@ export const Reminders = () => {
           {query
             ? "No reminders match your search."
             : filter === "pending"
-            ? "No pending reminders."
+            ? "No pending reminders. Click 'Schedule a reminder' to set one."
             : filter === "sent"
             ? "No reminders sent yet."
-            : "No reminders created yet. Click 'New reminder' above to schedule one."}
+            : "No reminders set yet. Click 'Schedule a reminder' above to set the date and message."}
         </Empty>
       ) : (
         <Card padded={false}>
@@ -205,10 +196,10 @@ export const Reminders = () => {
             <table className="w-full text-sm min-w-[700px]">
               <thead>
                 <tr className="text-left text-xs text-faint border-b border-line">
-                  <th className="px-5 py-3 font-medium">Title & Message</th>
-                  <th className="px-5 py-3 font-medium">Recipient</th>
+                  <th className="px-5 py-3 font-medium">Subject & Message</th>
+                  <th className="px-5 py-3 font-medium">To / From</th>
                   <th className="px-5 py-3 font-medium">Scheduled Date</th>
-                  <th className="px-5 py-3 font-medium">Status</th>
+                  <th className="px-5 py-3 font-medium">Automatic Status</th>
                   <th className="px-5 py-3 font-medium text-right">Actions</th>
                 </tr>
               </thead>
@@ -223,33 +214,32 @@ export const Reminders = () => {
                         <p className="text-xs text-dim mt-1 whitespace-pre-wrap line-clamp-2">{r.body}</p>
                       </td>
                       <td className="px-5 py-3.5 whitespace-nowrap">
-                        <p className="text-xs font-mono text-dim">{r.recipient}</p>
+                        <p className="text-xs font-mono text-text">{r.recipient}</p>
                         <p className="text-[11px] text-faint">from: {r.sender || "info@methynix.com"}</p>
                       </td>
                       <td className="px-5 py-3.5 whitespace-nowrap">
                         <p className={`text-xs font-medium ${isPending ? dueTone(r.due_date) : "text-dim"}`}>
-                          {fmtDate(r.due_date)} {new Date(r.due_date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                          {fmtDate(r.due_date)} at {new Date(r.due_date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                         </p>
                         <p className="text-[11px] text-faint">
-                          {isPending ? dueLabel(r.due_date) : r.sent_at ? `Sent ${fmtDate(r.sent_at)}` : "Sent"}
+                          {isPending ? dueLabel(r.due_date) : r.sent_at ? `Sent ${fmtDate(r.sent_at)}` : "Delivered"}
                         </p>
                       </td>
                       <td className="px-5 py-3.5 whitespace-nowrap">
-                        <Pill tone={isPending ? "sand" : "accent"}>
-                          {isPending ? "Pending" : "Sent"}
-                        </Pill>
+                        {isPending ? (
+                          <div>
+                            <Pill tone="sand">Auto-scheduled</Pill>
+                            <p className="text-[10px] text-sand mt-0.5">Sends automatically</p>
+                          </div>
+                        ) : (
+                          <div>
+                            <Pill tone="accent">Delivered</Pill>
+                            <p className="text-[10px] text-faint mt-0.5">Sent to inbox</p>
+                          </div>
+                        )}
                       </td>
                       <td className="px-5 py-3.5 whitespace-nowrap text-right">
                         <div className="flex items-center justify-end gap-2">
-                          <button
-                            type="button"
-                            disabled={isSending}
-                            onClick={() => sendNow(r)}
-                            className="px-2.5 py-1 text-xs rounded-md border border-accent/40 text-accent hover:bg-accent/10 disabled:opacity-50 transition-colors"
-                            title="Send this email right now"
-                          >
-                            {isSending ? "Sending…" : "Send now"}
-                          </button>
                           <button
                             type="button"
                             onClick={() =>
@@ -269,6 +259,17 @@ export const Reminders = () => {
                           >
                             Delete
                           </button>
+                          {isPending ? (
+                            <button
+                              type="button"
+                              disabled={isSending}
+                              onClick={() => sendTestNow(r)}
+                              className="text-[11px] text-faint hover:text-accent transition-colors underline ml-1"
+                              title="Send an immediate test email right now before the scheduled date"
+                            >
+                              {isSending ? "Sending…" : "Test send"}
+                            </button>
+                          ) : null}
                         </div>
                       </td>
                     </tr>
@@ -284,7 +285,7 @@ export const Reminders = () => {
       <Dialog
         open={Boolean(form)}
         onClose={() => setForm(null)}
-        title={form?.id ? "Edit reminder" : "New email reminder"}
+        title={form?.id ? "Edit scheduled reminder" : "Schedule an automatic reminder"}
         footer={
           <>
             {form?.id ? (
@@ -301,54 +302,56 @@ export const Reminders = () => {
               Cancel
             </Button>
             <Button onClick={save} disabled={busy === "save"}>
-              {busy === "save" ? "Saving…" : form?.id ? "Update reminder" : "Schedule reminder"}
+              {busy === "save" ? "Saving…" : form?.id ? "Update reminder" : "Save and schedule"}
             </Button>
           </>
         }
       >
         {form ? (
           <div className="space-y-4">
+            <div className="p-3 bg-accent/10 border border-accent/20 rounded-lg text-xs text-text leading-relaxed">
+              💡 <strong>Completely Automatic:</strong> Once you set the date below, our server automatically sends the email to <strong>{form.recipient || "methodhelen@gmail.com"}</strong> on that exact date. You don't have to do anything manually!
+            </div>
+
             <Field
-              label="Reminder title / Subject"
+              label="Subject / Title of the email"
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
-              placeholder="e.g. Check client contract or review server renewal"
+              placeholder="e.g. Follow up on hospital website project"
             />
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Field
-                label="Date & time to send"
+                label="Date & time for email to arrive"
                 type="datetime-local"
                 value={form.due_date}
                 onChange={(e) => setForm({ ...form, due_date: e.target.value })}
-                hint="When the email should arrive in your inbox"
+                hint="When the email should automatically arrive in your inbox"
               />
               <Field
-                label="Recipient email"
+                label="Recipient (Where to receive it)"
                 type="email"
                 value={form.recipient}
                 onChange={(e) => setForm({ ...form, recipient: e.target.value })}
                 placeholder="methodhelen@gmail.com"
-                hint="Email address that receives this reminder"
+                hint="Your email (defaults to methodhelen@gmail.com)"
               />
             </div>
 
             <Field
-              label="Sender address"
+              label="Sender"
               value={form.sender || "info@methynix.com"}
-              onChange={(e) => setForm({ ...form, sender: e.target.value })}
-              placeholder="info@methynix.com"
               disabled
-              hint="Sent from your verified domain (info@methynix.com)"
+              hint="Sent from your official email (info@methynix.com)"
             />
 
             <Field
-              label="Reminder message / Body"
+              label="Email Body / Message"
               type="textarea"
               rows={6}
               value={form.body}
               onChange={(e) => setForm({ ...form, body: e.target.value })}
-              placeholder="Write the full reminder details here. This message will be sent in the email body."
+              placeholder="Write the full reminder message that will be in the email body."
             />
           </div>
         ) : null}
@@ -356,4 +359,3 @@ export const Reminders = () => {
     </>
   );
 };
-

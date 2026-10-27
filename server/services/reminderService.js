@@ -15,8 +15,6 @@ const RULES = {
 
 const daysLeft = (date) => Math.ceil((new Date(date).getTime() - Date.now()) / DAY);
 
-// The tightest threshold the item has crossed, or null if none yet. Keys carry
-// the due date so moving a deadline re-arms its reminders.
 const dueKey = (date, thresholds) => {
   const left = daysLeft(date);
   const hit = [...thresholds].sort((a, b) => a - b).find((t) => left <= t);
@@ -39,20 +37,18 @@ const collect = async (Model, query, dateField, thresholds, describe) => {
   return due;
 };
 
-// Finds everything that crossed a reminder threshold, emails one digest and
-// marks those reminders as sent. Also processes custom user-created reminders.
-exports.run = async () => {
-  let customSent = 0;
-
-  // 1. Process custom scheduled reminders
+// Automatically checks for any custom scheduled reminders that have reached their date/time
+const processCustomReminders = async () => {
+  let count = 0;
   try {
-    const dueCustom = await Reminder.model.find({
+    const due = await Reminder.model.find({
       status: "pending",
       due_date: { $lte: new Date() },
     });
 
-    for (const r of dueCustom) {
+    for (const r of due) {
       try {
+        console.log(`[AUTOMATIC_REMINDER] Due date reached for "${r.title}". Automatically dispatching email to ${r.recipient}...`);
         await sendCustomReminder({
           to: r.recipient,
           title: r.title,
@@ -60,16 +56,20 @@ exports.run = async () => {
           sender: r.sender,
         });
         await Reminder.markSent(r._id);
-        customSent++;
+        count++;
+        console.log(`[AUTOMATIC_REMINDER] Successfully delivered email reminder: "${r.title}" to ${r.recipient}`);
       } catch (err) {
-        console.error(`[REMINDERS] Failed to send reminder "${r.title}":`, err.message);
+        console.error(`[AUTOMATIC_REMINDER] Delivery failed for "${r.title}":`, err.message);
       }
     }
   } catch (err) {
-    console.error("[REMINDERS] Failed to check custom reminders:", err.message);
+    console.error("[AUTOMATIC_REMINDER] Error checking pending reminders:", err.message);
   }
+  return count;
+};
 
-  // 2. Process system deadline digests
+// System deadline digests for projects and infrastructure
+const processDigests = async () => {
   const groups = [
     {
       Model: ClientProject.model,
@@ -117,14 +117,22 @@ exports.run = async () => {
         groups.flatMap((g) => g.due.map((d) => g.Model.updateOne({ _id: d.id }, { $addToSet: { reminders_sent: d.key } })))
       );
     } catch (err) {
-      console.error("[REMINDERS] Failed to send reminder digest:", err.message);
+      console.error("[REMINDERS] Failed to send digest:", err.message);
     }
   }
-
-  return { sent: items.length + customSent, customSent, digestSent: items.length };
+  return items.length;
 };
 
-// Dispatch a single custom reminder immediately
+// Combined run function called by external cron or manual triggers
+exports.run = async () => {
+  const customSent = await processCustomReminders();
+  const digestSent = await processDigests();
+  return { sent: customSent + digestSent, customSent, digestSent };
+};
+
+exports.processCustomReminders = processCustomReminders;
+
+// Dispatch a single reminder immediately if requested
 exports.sendSingleNow = async (id) => {
   const r = await Reminder.findById(id);
   if (!r) throw new Error("Reminder not found.");
@@ -139,14 +147,25 @@ exports.sendSingleNow = async (id) => {
   return Reminder.markSent(r.id);
 };
 
-// In-process schedule. Checks every 15 minutes for prompt delivery of custom reminders.
+// Automated scheduler:
+// 1. Checks every 60 seconds so custom scheduled reminders fire automatically on time.
+// 2. Checks every 6 hours for project deadline digests.
 exports.start = () => {
-  const tick = () =>
-    exports
-      .run()
-      .then((r) => r.sent && console.log(`[REMINDERS] Sent ${r.sent} reminder(s).`))
-      .catch((err) => console.error("[REMINDERS] Failed:", err.message));
-  setTimeout(tick, 30 * 1000);
-  // Check every 15 minutes so scheduled custom reminders fire promptly around their scheduled time
-  setInterval(tick, 15 * 60 * 1000);
+  console.log("[AUTOMATIC_REMINDER] Automated scheduler started. Checking for due reminders every 60s.");
+
+  // Check immediately on startup
+  setTimeout(() => {
+    processCustomReminders();
+    processDigests();
+  }, 5000);
+
+  // Check every 60 seconds for scheduled reminders that have arrived at their due date/time
+  setInterval(() => {
+    processCustomReminders();
+  }, 60 * 1000);
+
+  // Check project deadlines every 6 hours
+  setInterval(() => {
+    processDigests();
+  }, 6 * 60 * 60 * 1000);
 };
