@@ -144,8 +144,10 @@ export const AgreementPDF = ({ doc, assets = {} }) => {
                 </Clause>
               ) : null}
               <Clause n={`${s}.${++c}`}>
-                Any change to the scope described in the Proposal must be agreed in writing by both Parties and may result in
-                an adjustment to the fees and/or timeline set out in this Agreement.
+                Any change to the scope described in the Proposal must be agreed in writing by both Parties. Where more
+                than three (3) additional features or functional enhancements are requested by the Client during development,
+                such additions shall be treated as out-of-scope work requiring an additional fee and an extension of the delivery
+                timeline.
               </Clause>
             </View>
           );

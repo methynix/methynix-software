@@ -86,6 +86,7 @@ const proposalData = (brandKey, project) => {
     timelineNote: "Continuous feedback will be provided",
     terms: [
       "Payment Schedule: 40% upfront deposit to initiate the project, 60% on final delivery.",
+      "Scope & Changes: Up to three (3) minor adjustments within scope are accommodated; requests exceeding 3 additional features during development shall require an additional fee and an extension of the delivery timeline.",
       "Warranty: 3 months free bug fixes after launch.",
       "Maintenance Contract: Optional, renewable yearly at a variable price.",
       "Ownership: Full source code and assets transferred upon final payment.",

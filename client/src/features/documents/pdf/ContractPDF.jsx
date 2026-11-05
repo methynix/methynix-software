@@ -163,7 +163,9 @@ export const ContractPDF = ({ doc, assets = {} }) => {
           </P>
           <P>
             Minor revisions that do not materially alter the scope of work may be accommodated at the Service Provider's
-            discretion without additional charge. Significant changes shall be quoted and agreed upon separately.
+            discretion without additional charge. However, if more than three (3) additional features or functional
+            enhancements are requested by the Client during the development phase, an additional fee shall be charged and the
+            project timeline shall be extended accordingly.
           </P>
         </Section>
 
