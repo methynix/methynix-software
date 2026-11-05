@@ -2,6 +2,7 @@ import { Document, Page, View, Text, Image } from "@react-pdf/renderer";
 import { getBrand } from "../brands";
 import { formatTZS, formatDate, toNumber, amountInWords } from "../format";
 import { COLORS, base, Letterhead, Footer } from "./parts";
+import { DEFAULT_SIGNATURE } from "./assets";
 
 const METHODS = [
   { key: "cash", label: "Cash" },
@@ -88,8 +89,8 @@ export const ReceiptPDF = ({ doc, assets = {} }) => {
 
         <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 46 }}>
           <View style={{ width: 210 }}>
-            {d.signature ? (
-              <Image src={d.signature} style={{ height: 40, objectFit: "contain", marginBottom: 2 }} />
+            {(d.signature || assets.signature || DEFAULT_SIGNATURE) ? (
+              <Image src={d.signature || assets.signature || DEFAULT_SIGNATURE} style={{ height: 40, objectFit: "contain", marginBottom: 2 }} />
             ) : (
               <View style={{ height: 40 }} />
             )}

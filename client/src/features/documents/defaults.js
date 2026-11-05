@@ -1,5 +1,6 @@
 import { getBrand, makeReference } from "./brands";
 import { todayISO, formatTZS, toNumber } from "./format";
+import { DEFAULT_SIGNATURE } from "./pdf/assets";
 
 export const emptyClient = () => ({ name: "", email: "", phone: "", address: "" });
 
@@ -42,6 +43,7 @@ const proposalData = (brandKey, project) => {
     reference: makeReference(brandKey, "proposal", project?.ref_no),
     date: todayISO(),
     preparedBy: brand.preparer,
+    signature: DEFAULT_SIGNATURE,
     projectTitle: project?.name || "",
     overview: project?.description || "",
     modules: [
@@ -124,7 +126,7 @@ const agreementData = (brandKey, project, proposal) => {
     warrantyMonths: 3,
     cureDays: 14,
     disputeDays: 30,
-    providerSignature: null,
+    providerSignature: DEFAULT_SIGNATURE,
     providerSignDate: todayISO(),
   };
 };
@@ -364,7 +366,7 @@ const receiptData = (brandKey, project) => ({
   balanceDue: "",
   amountInWords: "",
   receivedByName: getBrand(brandKey).operator,
-  signature: null,
+  signature: DEFAULT_SIGNATURE,
 });
 
 // A fresh working document. `project` and `proposal` (a saved proposal

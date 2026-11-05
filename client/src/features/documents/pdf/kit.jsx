@@ -29,26 +29,26 @@ export const kit = StyleSheet.create({
 });
 
 export const Cover = ({ brand, logo, title, subtitle, note, meta = [], children }) => (
-  <View style={{ alignItems: "center", textAlign: "center", marginTop: 40 }}>
-    {logo ? <Image src={logo} style={{ width: 150, height: 100, objectFit: "contain", marginBottom: 26 }} /> : null}
-    <Text style={{ fontFamily: "Helvetica-Bold", fontSize: 20 }}>{brand.name}</Text>
-    <Text style={{ fontSize: 11, marginTop: 6 }}>{brand.legalName}</Text>
-    <Text style={[kit.italic, { fontSize: 11, marginTop: 3 }]}>‘{brand.tagline}’</Text>
-    <Text style={{ fontFamily: "Helvetica-Bold", fontSize: 17, color: brand.colors.primary, marginTop: 24 }}>{title}</Text>
+  <View style={{ alignItems: "center", textAlign: "center", marginTop: logo ? 20 : 40 }}>
+    {logo ? <Image src={logo} style={{ width: 140, height: 90, objectFit: "contain", marginBottom: 20 }} /> : null}
+    <Text style={{ fontFamily: "Helvetica-Bold", fontSize: 19 }}>{brand.name}</Text>
+    <Text style={{ fontSize: 11, marginTop: 5 }}>{brand.legalName}</Text>
+    <Text style={[kit.italic, { fontSize: 10.5, marginTop: 3 }]}>‘{brand.tagline}’</Text>
+    <Text style={{ fontFamily: "Helvetica-Bold", fontSize: 17, color: brand.colors.primary, marginTop: 22 }}>{title}</Text>
     {subtitle ? <Text style={[kit.italic, { fontSize: 12, marginTop: 6 }]}>{subtitle}</Text> : null}
-    {note ? <Text style={{ fontSize: 10.5, marginTop: 14, maxWidth: 440 }}>{note}</Text> : null}
-    <View style={{ marginTop: 20 }}>
+    {note ? <Text style={{ fontSize: 10.5, marginTop: 12, maxWidth: 440 }}>{note}</Text> : null}
+    <View style={{ marginTop: 18 }}>
       {meta
         .filter(([, v]) => v)
         .map(([label, value]) => (
-          <Text key={label} style={{ fontSize: 11, marginTop: 7 }}>
+          <Text key={label} style={{ fontSize: 11, marginTop: 6 }}>
             <Text style={kit.bold}>{label} </Text>
             {value}
           </Text>
         ))}
     </View>
     {children}
-    <Text style={{ fontSize: 9.5, marginTop: 22 }}>
+    <Text style={{ fontSize: 9.5, marginTop: 20 }}>
       {[brand.website, brand.email, brand.phone].filter(Boolean).join("  |  ")}
     </Text>
     <Text style={{ fontSize: 9.5, marginTop: 4 }}>{brand.address}</Text>

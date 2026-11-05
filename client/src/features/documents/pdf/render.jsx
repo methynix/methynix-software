@@ -1,5 +1,6 @@
 import { pdf } from "@react-pdf/renderer";
 import { getBrand } from "../brands";
+import { BRAND_LOGOS, DEFAULT_SIGNATURE } from "./assets";
 import { ReceiptPDF } from "./ReceiptPDF";
 import { ContractPDF } from "./ContractPDF";
 import { AgreementPDF } from "./AgreementPDF";
@@ -13,27 +14,49 @@ const pickComponent = (doc) => {
   return { receipt: ReceiptPDF, proposal: ProposalPDF, technical: TechnicalPDF }[doc.type];
 };
 
-// react-pdf throws if an image 404s, so check the brand logo first and leave
-// it out when it is missing (e.g. before the Kaspa logo is added).
 const logoCache = {};
-const resolveLogo = async (src) => {
-  if (!src) return null;
-  if (src in logoCache) return logoCache[src];
-  try {
-    const res = await fetch(src, { method: "HEAD" });
-    const ok = res.ok && (res.headers.get("content-type") || "").startsWith("image/");
-    logoCache[src] = ok ? src : null;
-  } catch {
-    logoCache[src] = null;
+
+export const resolveLogo = async (brandKey, customSrc) => {
+  const brand = brandKey || "methynix";
+  if (customSrc && typeof customSrc === "string") {
+    if (customSrc in logoCache) return logoCache[customSrc];
+    try {
+      const url =
+        typeof window !== "undefined" && customSrc.startsWith("/")
+          ? `${window.location.origin}${customSrc}`
+          : customSrc;
+      const res = await fetch(url);
+      if (res.ok) {
+        const blob = await res.blob();
+        const dataUrl = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+        logoCache[customSrc] = dataUrl;
+        return dataUrl;
+      }
+    } catch {
+      // Fall back to pre-bundled brand logo below
+    }
   }
-  return logoCache[src];
+
+  // Pre-bundled, zero-delay base64 data URLs for Methynix and Kaspa
+  if (BRAND_LOGOS[brand]) {
+    return BRAND_LOGOS[brand];
+  }
+
+  return BRAND_LOGOS.methynix || null;
 };
 
 export const toBlob = async (doc) => {
   const Comp = pickComponent(doc);
   if (!Comp) throw new Error("Unknown document type.");
-  const logo = await resolveLogo(getBrand(doc.data?.brand).logo);
-  return pdf(<Comp doc={doc} assets={{ logo }} />).toBlob();
+  const brandKey = doc.data?.brand || "methynix";
+  const customLogo = doc.data?.logo || getBrand(brandKey).logo;
+  const logo = await resolveLogo(brandKey, customLogo);
+  return pdf(<Comp doc={doc} assets={{ logo, signature: DEFAULT_SIGNATURE }} />).toBlob();
 };
 
 export const pdfFilename = (doc) => {

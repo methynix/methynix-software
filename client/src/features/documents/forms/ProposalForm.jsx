@@ -3,6 +3,7 @@ import { proposalTotal } from "../defaults";
 import { formatTZS, toNumber } from "../format";
 import { getBrand } from "../brands";
 import { defaultConclusion } from "../pdf/ProposalPDF";
+import { SignaturePad } from "../SignaturePad";
 
 export const ProposalForm = ({ value, onChange }) => {
   const d = value.data;
@@ -126,6 +127,11 @@ export const ProposalForm = ({ value, onChange }) => {
           hint="Leave empty to use the standard wording shown."
         />
         <TextField label="Valid for (days)" value={d.validityDays} onChange={(v) => patch({ validityDays: v })} />
+      </FormSection>
+
+      <FormSection title="7. Signature">
+        <TextField label="Prepared by" value={d.preparedBy} onChange={(v) => patch({ preparedBy: v })} />
+        <SignaturePad label="Signature" value={d.signature} onChange={(sig) => patch({ signature: sig })} />
       </FormSection>
     </div>
   );

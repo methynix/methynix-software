@@ -1,8 +1,9 @@
-import { Document, Page, View, Text } from "@react-pdf/renderer";
+import { Document, Page, View, Text, Image } from "@react-pdf/renderer";
 import { getBrand } from "../brands";
 import { formatTZS, toNumber } from "../format";
 import { proposalTotal } from "../defaults";
 import { kit, Cover, H1, H2, P, List, Table, PageNumber, shortDate } from "./kit";
+import { DEFAULT_SIGNATURE } from "./assets";
 
 const daysTotal = (timeline = []) => timeline.reduce((s, r) => s + toNumber(r.days), 0);
 
@@ -22,6 +23,7 @@ export const ProposalPDF = ({ doc, assets = {} }) => {
   const totalDays = daysTotal(timeline);
   const recurring = (d.recurring || []).filter((r) => r.item);
   const reference = d.reference || doc.number;
+  const signature = d.signature || d.providerSignature || assets.signature || DEFAULT_SIGNATURE;
 
   let section = 0;
   const next = () => ++section;
@@ -42,7 +44,13 @@ export const ProposalPDF = ({ doc, assets = {} }) => {
             ["REFERENCE NO.", reference],
             ["PREPARED FOR:", doc.client?.name ? `${doc.client.name.toUpperCase()} (Client)` : ""],
           ]}
-        />
+        >
+          {signature ? (
+            <View style={{ alignItems: "center", marginTop: 14 }}>
+              <Image src={signature} style={{ height: 36, width: 120, objectFit: "contain" }} />
+            </View>
+          ) : null}
+        </Cover>
         <PageNumber />
       </Page>
 
@@ -142,8 +150,21 @@ export const ProposalPDF = ({ doc, assets = {} }) => {
           <H1 brand={brand} n={next()}>CONCLUSION</H1>
           <P>{d.conclusion || defaultConclusion(d, brand, total)}</P>
           <P>We look forward to partnering with you on this project.</P>
-          <Text style={[kit.bold, { marginTop: 14 }]}>Prepared by:</Text>
-          <Text style={{ marginTop: 4 }}>{d.preparedBy || brand.preparer}</Text>
+          <View style={{ marginTop: 14 }}>
+            <Text style={kit.bold}>Prepared by:</Text>
+            {signature ? (
+              <View style={{ marginTop: 6, height: 42 }}>
+                <Image
+                  src={signature}
+                  style={{ height: 40, width: 140, objectFit: "contain" }}
+                />
+              </View>
+            ) : null}
+            <Text style={[{ marginTop: 4 }, kit.bold]}>{d.preparedBy || brand.preparer}</Text>
+            <Text style={[kit.italic, { fontSize: 8.5, color: "#666", marginTop: 1 }]}>
+              {brand.preparerTitle || "Founder"}
+            </Text>
+          </View>
         </View>
 
         <View style={{ marginTop: 26 }} wrap={false}>

@@ -1,7 +1,8 @@
 import { Document, Page, View, Text, Image } from "@react-pdf/renderer";
-import { COMPANY } from "../company";
+import { getBrand } from "../brands";
 import { formatTZS, toNumber } from "../format";
 import { COLORS, base, Letterhead, Footer } from "./parts";
+import { DEFAULT_SIGNATURE } from "./assets";
 
 const Section = ({ n, title, children }) => (
   <View style={{ marginTop: 16 }} wrap={false}>
@@ -19,16 +20,17 @@ const P = ({ children, style }) => (
 
 const cell = (flex, extra = {}) => ({ flex, paddingVertical: 6, paddingHorizontal: 6, ...extra });
 
-export const ContractPDF = ({ doc }) => {
+export const ContractPDF = ({ doc, assets = {} }) => {
   const d = doc.data || {};
+  const brand = getBrand(d.brand);
   const total = toNumber(doc.total) || toNumber(d.totalCost);
   const stages = Array.isArray(d.stages) ? d.stages : [];
 
   return (
     <Document title={`Agreement ${doc.number}`}>
       <Page size="A4" style={base.page}>
-        <Letterhead />
-        <View style={base.rule} />
+        <Letterhead brand={brand} logo={assets.logo} />
+        <View style={[base.rule, { backgroundColor: brand.colors?.primary || COLORS.teal }]} />
 
         <Text style={{ textAlign: "center", fontFamily: "Helvetica-Bold", fontSize: 20, color: COLORS.ink, marginTop: 4 }}>
           MASTER SERVICE AGREEMENT
@@ -231,7 +233,9 @@ export const ContractPDF = ({ doc }) => {
                 <Text style={base.small}><Text style={base.bold}>Name: </Text>{d.providerSignName || COMPANY.operator}</Text>
                 <Text style={[base.small, { marginTop: 6 }]}><Text style={base.bold}>Title: </Text>{d.providerSignTitle || "Founder"}</Text>
                 <View style={{ marginTop: 8, height: 42 }}>
-                  {d.providerSignature ? <Image src={d.providerSignature} style={{ height: 40, objectFit: "contain" }} /> : null}
+                  {(d.providerSignature || assets.signature || DEFAULT_SIGNATURE) ? (
+                    <Image src={d.providerSignature || assets.signature || DEFAULT_SIGNATURE} style={{ height: 40, objectFit: "contain" }} />
+                  ) : null}
                 </View>
                 <Text style={[base.small, { borderTopWidth: 1, borderTopColor: COLORS.muted, paddingTop: 3 }]}>Signature</Text>
                 <Text style={[base.small, { marginTop: 8 }]}><Text style={base.bold}>Date: </Text>_______________</Text>

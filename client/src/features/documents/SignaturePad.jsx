@@ -30,17 +30,32 @@ export const SignaturePad = ({ label = "Signature", value, onChange, height = 16
   // Paint an existing signature (edit mode) once the canvas is laid out.
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas || !value) return;
+    if (!canvas) return;
     const ctx = prepare();
+    if (!value) {
+      if (ctx) {
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+      setHasInk(false);
+      return;
+    }
     const img = new Image();
     img.onload = () => {
       const rect = canvas.getBoundingClientRect();
-      ctx.drawImage(img, 0, 0, rect.width, rect.height);
+      const padding = 16;
+      const maxW = Math.max(10, rect.width - padding * 2);
+      const maxH = Math.max(10, rect.height - padding * 2);
+      const scale = Math.min(maxW / img.width, maxH / img.height, 1.5);
+      const w = img.width * scale;
+      const h = img.height * scale;
+      const x = (rect.width - w) / 2;
+      const y = (rect.height - h) / 2;
+      ctx.drawImage(img, x, y, w, h);
       setHasInk(true);
     };
     img.src = value;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [value, prepare]);
 
   const pos = (e) => {
     const rect = canvasRef.current.getBoundingClientRect();

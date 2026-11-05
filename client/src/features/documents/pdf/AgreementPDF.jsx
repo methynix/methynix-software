@@ -2,6 +2,7 @@ import { Document, Page, View, Text, Image } from "@react-pdf/renderer";
 import { getBrand } from "../brands";
 import { formatTZS, toNumber, amountInWords } from "../format";
 import { kit, PageNumber, shortDate } from "./kit";
+import { DEFAULT_SIGNATURE } from "./assets";
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
@@ -271,8 +272,8 @@ export const AgreementPDF = ({ doc, assets = {} }) => {
           <Text><B>Name: </B>{d.representative || brand.preparer}</Text>
           <View style={{ flexDirection: "row", alignItems: "flex-end", marginTop: 8, height: 44 }}>
             <Text style={kit.bold}>Signature: </Text>
-            {d.providerSignature ? (
-              <Image src={d.providerSignature} style={{ height: 40, width: 140, objectFit: "contain" }} />
+            {(d.providerSignature || assets.signature || DEFAULT_SIGNATURE) ? (
+              <Image src={d.providerSignature || assets.signature || DEFAULT_SIGNATURE} style={{ height: 40, width: 140, objectFit: "contain" }} />
             ) : (
               <Text>________________________</Text>
             )}
