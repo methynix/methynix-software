@@ -44,13 +44,7 @@ export const ProposalPDF = ({ doc, assets = {} }) => {
             ["REFERENCE NO.", reference],
             ["PREPARED FOR:", doc.client?.name ? `${doc.client.name.toUpperCase()} (Client)` : ""],
           ]}
-        >
-          {signature ? (
-            <View style={{ alignItems: "center", marginTop: 14 }}>
-              <Image src={signature} style={{ height: 36, width: 120, objectFit: "contain" }} />
-            </View>
-          ) : null}
-        </Cover>
+        />
         <PageNumber />
       </Page>
 
