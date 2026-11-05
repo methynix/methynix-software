@@ -18,7 +18,33 @@ const logoCache = {};
 
 export const resolveLogo = async (brandKey, customSrc) => {
   const brand = brandKey || "methynix";
-  if (customSrc && typeof customSrc === "string") {
+  const defaultLogo = getBrand(brand).logo;
+
+  // 1. If no custom logo or if it's the standard brand logo path, use the rock-solid pre-bundled Base64 logo immediately
+  if (
+    !customSrc ||
+    customSrc === defaultLogo ||
+    customSrc === "/logo.png" ||
+    customSrc === "/kaspa-logo.png" ||
+    customSrc === "/kaspa-logo.jpeg" ||
+    customSrc === "/methynix.png"
+  ) {
+    return BRAND_LOGOS[brand] || BRAND_LOGOS.methynix;
+  }
+
+  // 2. If it's already a valid base64 data URL
+  if (typeof customSrc === "string" && customSrc.startsWith("data:image/")) {
+    return customSrc;
+  }
+
+  // 3. If it's a Cloudflare Dashboard URL (not public), map directly to pre-bundled logo
+  if (typeof customSrc === "string" && customSrc.includes("dash.cloudflare.com")) {
+    if (customSrc.toLowerCase().includes("kaspa")) return BRAND_LOGOS.kaspa;
+    if (customSrc.toLowerCase().includes("methynix")) return BRAND_LOGOS.methynix;
+  }
+
+  // 4. Try network fetch for real external custom logo, but strictly verify it's an image
+  if (typeof customSrc === "string") {
     if (customSrc in logoCache) return logoCache[customSrc];
     try {
       const url =
@@ -28,26 +54,25 @@ export const resolveLogo = async (brandKey, customSrc) => {
       const res = await fetch(url);
       if (res.ok) {
         const blob = await res.blob();
-        const dataUrl = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result);
-          reader.onerror = reject;
-          reader.readAsDataURL(blob);
-        });
-        logoCache[customSrc] = dataUrl;
-        return dataUrl;
+        // Prevent HTML pages (e.g. 404/SPA index.html or Cloudflare login) from corrupting the PDF
+        if (blob.type && blob.type.startsWith("image/")) {
+          const dataUrl = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+          });
+          logoCache[customSrc] = dataUrl;
+          return dataUrl;
+        }
       }
     } catch {
-      // Fall back to pre-bundled brand logo below
+      // Fall back below
     }
   }
 
   // Pre-bundled, zero-delay base64 data URLs for Methynix and Kaspa
-  if (BRAND_LOGOS[brand]) {
-    return BRAND_LOGOS[brand];
-  }
-
-  return BRAND_LOGOS.methynix || null;
+  return BRAND_LOGOS[brand] || BRAND_LOGOS.methynix || null;
 };
 
 export const toBlob = async (doc) => {

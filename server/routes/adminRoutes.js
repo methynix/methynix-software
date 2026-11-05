@@ -11,6 +11,7 @@ const paymentController = require("../controllers/paymentController");
 const overviewController = require("../controllers/overviewController");
 const reminderController = require("../controllers/reminderController");
 const crudController = require("../controllers/crudController");
+const uploadController = require("../controllers/uploadController");
 const Infrastructure = require("../models/infrastructureModel");
 const StudioProject = require("../models/studioProjectModel");
 const Note = require("../models/noteModel");
@@ -60,6 +61,8 @@ router.delete("/posts/:id", postController.remove);
 
 router.post("/projects", projectController.create);
 router.delete("/projects/:id", projectController.remove);
+
+router.post("/upload", uploadController.uploadImage);
 
 router.patch("/site", settingsController.setMaintenance);
 

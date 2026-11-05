@@ -5,6 +5,7 @@ const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 // (key prefix) named after the project inside the headquarter bucket.
 const ACCOUNT_ID = process.env.R2_ACCOUNT_ID;
 const BUCKET = process.env.R2_BUCKET || "methynix-headquarter";
+const PUBLIC_URL = process.env.R2_PUBLIC_URL || "https://pub-fcdacb1cbeae45269efc0e8804f4c72b.r2.dev";
 
 let client = null;
 const getClient = () => {
@@ -62,6 +63,15 @@ exports.signedUrl = (key, filename) =>
     }),
     { expiresIn: 60 * 10 }
   );
+
+exports.publicUrl = (key) => {
+  const base = PUBLIC_URL.replace(/\/+$/, "");
+  const encodedKey = String(key || "")
+    .split("/")
+    .map(encodeURIComponent)
+    .join("/");
+  return `${base}/${encodedKey}`;
+};
 
 exports.remove = async (key) => {
   await getClient().send(new DeleteObjectCommand({ Bucket: BUCKET, Key: key }));

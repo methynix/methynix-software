@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import apiClient from "../../api/apiClient";
 import { useUI } from "../../context/UIContext";
 import { Input } from "../../components/ui/Input";
+import { ImageUpload } from "../../components/ui/ImageUpload";
 import { PageHeader } from "./ui";
 
 // The public website: What's new posts, the Work portfolio and maintenance mode.
@@ -53,12 +54,12 @@ const PostsPanel = ({ showToast }) => {
         <h2 className="font-display text-xl font-semibold">Post an update</h2>
         <Input label="Title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="We launched a new site" />
         <Input label="Text" type="textarea" value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} placeholder="What happened, in a sentence or two." />
-        <Input
-          label="Image link (optional)"
+        <ImageUpload
+          label="News cover image (optional)"
           value={form.image_url}
-          onChange={(e) => setForm({ ...form, image_url: e.target.value })}
-          placeholder="https://..."
-          hint="Paste a link to an image you have hosted. Leave empty for none."
+          onChange={(url) => setForm({ ...form, image_url: url })}
+          folder="methynix-website (new)"
+          hint="Select an image from your computer to store in your Cloudflare R2 bucket."
         />
         <button type="submit" disabled={saving} className="w-full py-3 rounded-lg bg-accent text-accentInk font-medium hover:bg-accentDeep hover:text-text transition-colors disabled:opacity-50">
           {saving ? "Publishing…" : "Publish update"}
@@ -145,12 +146,12 @@ const ProjectsPanel = ({ showToast }) => {
         </label>
         <Input label="One-line summary" value={form.summary} onChange={(e) => setForm({ ...form, summary: e.target.value })} placeholder="A booking site for a clinic." />
         <Input label="Live link (optional)" value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })} placeholder="https://..." />
-        <Input
-          label="Thumbnail image link (optional)"
+        <ImageUpload
+          label="Thumbnail image (optional)"
           value={form.image_url}
-          onChange={(e) => setForm({ ...form, image_url: e.target.value })}
-          placeholder="https://..."
-          hint="A screenshot of the site or app. Leave empty to show the project name instead."
+          onChange={(url) => setForm({ ...form, image_url: url })}
+          folder="methynix-website (new)"
+          hint="Select a project screenshot or cover from your computer to store in your Cloudflare R2 bucket."
         />
         <button type="submit" disabled={saving} className="w-full py-3 rounded-lg bg-accent text-accentInk font-medium hover:bg-accentDeep hover:text-text transition-colors disabled:opacity-50">
           {saving ? "Adding…" : "Add project"}
