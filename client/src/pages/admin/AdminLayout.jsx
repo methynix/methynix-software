@@ -194,7 +194,7 @@ export const AdminLayout = () => {
 
   const brand = (
     <div className="flex items-center gap-2.5 px-3">
-      <img src="/logo.png" alt="" className="h-8 w-8 rounded-full object-contain" />
+      <img src={SITE.assets.logo} alt="" className="h-8 w-8 rounded-full object-contain" />
       <div className="leading-tight">
         <p className="font-display font-semibold">{SITE.name}</p>
         <p className="text-[11px] text-faint">Headquarters</p>

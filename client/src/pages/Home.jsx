@@ -75,7 +75,7 @@ export const Home = () => {
             className="lg:col-span-5"
           >
             <figure className="rounded-2xl overflow-hidden border border-line bg-surface">
-              <img src="/methynix.jpg" alt="" className="w-full h-64 object-cover" />
+              <img src={SITE.assets.hero} alt="" className="w-full h-64 object-cover" />
               <figcaption className="px-5 py-4 flex items-center justify-between">
                 <span className="text-sm text-text">Built in Dodoma</span>
                 <span className="font-mono text-xs text-faint">Since {SITE.founded}</span>

@@ -22,6 +22,13 @@ export const SITE = {
     github: "",
     x: "",
   },
+
+  assets: {
+    logo: "https://pub-fcdacb1cbeae45269efc0e8804f4c72b.r2.dev/methynix/methynix.png",
+    hero: "https://pub-fcdacb1cbeae45269efc0e8804f4c72b.r2.dev/methynix/methynix.jpg",
+    signature: "https://pub-fcdacb1cbeae45269efc0e8804f4c72b.r2.dev/methynix/signature.png",
+    kaspaLogo: "https://pub-fcdacb1cbeae45269efc0e8804f4c72b.r2.dev/methynix/KASPAAA.jpeg",
+  },
 };
 
 export const DISCIPLINES = [

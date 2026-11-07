@@ -23,7 +23,7 @@ export const BRANDS = {
     entity:
       "a registered business name (Registration No. BN633674) carrying on the business of software development, with its place of business at Iyumbu, UDOM (CIVE campus), Dodoma, Tanzania",
     partyAlias: "Methynix",
-    logo: "/logo.png",
+    logo: "https://pub-fcdacb1cbeae45269efc0e8804f4c72b.r2.dev/methynix/methynix.png",
     colors: { primary: "#0e7f8f", accent: "#14b3c6", dark: "#12303a", tint: "#eef6f8" },
     prefixes: { proposal: "MTX-P", contract: "MTX-C", technical: "MTX-T", receipt: "MTX-R" },
   },
@@ -47,9 +47,7 @@ export const BRANDS = {
     entity:
       "a technology and software development company having its registered office at 1st Floor, Emirates House, Sinza Madukani, Shekilango Rd, Dar es Salaam, Tanzania",
     partyAlias: "Kaspa",
-    // Drop the Kaspa logo into client/public with this name. Until then the
-    // PDFs show the company name without a logo.
-    logo: "/kaspa-logo.png",
+    logo: "https://pub-fcdacb1cbeae45269efc0e8804f4c72b.r2.dev/methynix/KASPAAA.jpeg",
     colors: { primary: "#A6192E", accent: "#A6192E", dark: "#1a1d22", tint: "#f3f3f3" },
     prefixes: { proposal: "NTD-", contract: "CTT-", technical: "NTD-", receipt: "KSP-R" },
   },
