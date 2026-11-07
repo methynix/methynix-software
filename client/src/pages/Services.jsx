@@ -19,7 +19,6 @@ export const BUILD_CATEGORIES = [
     link: "/contact?service=website",
     image:
       "https://pub-fcdacb1cbeae45269efc0e8804f4c72b.r2.dev/methynix-website%20(new)/company-website.jpg",
-    fallbackImage: "/category-images/company-website.jpg",
   },
   {
     id: "online-store",
@@ -38,7 +37,6 @@ export const BUILD_CATEGORIES = [
     link: "/contact?service=ecommerce",
     image:
       "https://pub-fcdacb1cbeae45269efc0e8804f4c72b.r2.dev/methynix-website%20(new)/online-store.jpg",
-    fallbackImage: "/category-images/online-store.jpg",
   },
   {
     id: "admin-dashboard",
@@ -57,7 +55,6 @@ export const BUILD_CATEGORIES = [
     link: "/contact?service=dashboard",
     image:
       "https://pub-fcdacb1cbeae45269efc0e8804f4c72b.r2.dev/methynix-website%20(new)/admin-dashboard.jpg",
-    fallbackImage: "/category-images/admin-dashboard.jpg",
   },
   {
     id: "mobile-apps",
@@ -76,7 +73,6 @@ export const BUILD_CATEGORIES = [
     link: "/contact?service=mobile",
     image:
       "https://pub-fcdacb1cbeae45269efc0e8804f4c72b.r2.dev/methynix-website%20(new)/mobile-apps-ios-android.jpg",
-    fallbackImage: "/category-images/mobile-apps-ios-android.jpg",
   },
   {
     id: "mobile-money",
@@ -95,7 +91,6 @@ export const BUILD_CATEGORIES = [
     link: "/contact?service=payments",
     image:
       "https://pub-fcdacb1cbeae45269efc0e8804f4c72b.r2.dev/methynix-website%20(new)/mobile-money-payments.jpg",
-    fallbackImage: "/category-images/mobile-money-payments.jpg",
   },
   {
     id: "offline-tools",
@@ -114,7 +109,6 @@ export const BUILD_CATEGORIES = [
     link: "/contact?service=pos",
     image:
       "https://pub-fcdacb1cbeae45269efc0e8804f4c72b.r2.dev/methynix-website%20(new)/offline-pos-business-tools.jpg",
-    fallbackImage: "/category-images/offline-pos-business-tools.jpg",
   },
   {
     id: "backend-databases",
@@ -133,7 +127,6 @@ export const BUILD_CATEGORIES = [
     link: "/contact?service=backend",
     image:
       "https://pub-fcdacb1cbeae45269efc0e8804f4c72b.r2.dev/methynix-website%20(new)/apis-and-databases.jpg",
-    fallbackImage: "/category-images/apis-and-databases.jpg",
   },
 ];
 
@@ -266,11 +259,6 @@ export const Services = () => (
                   <img
                     src={item.image}
                     alt={item.title}
-                    onError={(e) => {
-                      if (e.target.src !== window.location.origin + item.fallbackImage) {
-                        e.target.src = item.fallbackImage;
-                      }
-                    }}
                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                     loading="lazy"
                   />
