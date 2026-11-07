@@ -17,9 +17,10 @@ export default {
         faint: "#666E7A",
       },
       fontFamily: {
-        display: ['"Bricolage Grotesque"', 'system-ui', 'sans-serif'],
+        display: ['"Clash Display"', '"Bricolage Grotesque"', 'system-ui', 'sans-serif'],
         sans: ['"Inter"', 'system-ui', 'sans-serif'],
         mono: ['"JetBrains Mono"', 'monospace'],
+        clash: ['"Clash Display"', 'sans-serif'],
       },
       letterSpacing: {
         label: '0.22em',

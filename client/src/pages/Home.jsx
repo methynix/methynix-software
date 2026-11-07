@@ -115,6 +115,15 @@ export const Home = () => {
             </div>
           ))}
         </div>
+        <div className="mt-8 flex justify-end">
+          <Link
+            to="/services"
+            className="text-sm font-medium text-sand hover:text-sand/80 inline-flex items-center gap-2 group transition-colors"
+          >
+            <span>See what we can build for you</span>
+            <span className="transition-transform group-hover:translate-x-1">→</span>
+          </Link>
+        </div>
       </section>
 
       {featured.length > 0 ? (
