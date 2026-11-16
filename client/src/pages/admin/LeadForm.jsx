@@ -16,6 +16,9 @@ export const emptyLead = () => ({
   notes: "",
 });
 
+// A client from before this system: filed as completed, no payments, no emails.
+export const emptyPastClient = () => ({ ...emptyLead(), legacy: true, completed_at: "", storage_folder: "" });
+
 // Shape a lead form for the API (numbers as numbers, empty dates as null).
 export const leadPayload = (f) => ({
   ...f,
@@ -25,6 +28,8 @@ export const leadPayload = (f) => ({
     .map((c) => ({ ...c, amount: Number(String(c.amount || 0).replace(/[,\s]/g, "")) || 0 })),
   start_date: f.start_date || null,
   deadline: f.deadline || null,
+  completed_at: f.completed_at || null,
+  storage_folder: f.storage_folder || undefined,
 });
 
 export const LeadForm = ({ value, onChange }) => {
@@ -41,6 +46,16 @@ export const LeadForm = ({ value, onChange }) => {
         <Select label="Came from" value={value.source} onChange={set("source")} options={SOURCES} />
         <Select label="Documents go out as" value={value.brand} onChange={set("brand")} options={BRAND_LIST.map((b) => ({ value: b.key, label: b.legalName }))} className="sm:col-span-2" />
       </div>
+
+      {value.legacy ? (
+        <div className="rounded-xl border border-line bg-raised/30 p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <p className="sm:col-span-2 text-xs text-dim">
+            Past client: filed as completed. No payments are recorded, so nothing is added to revenue, outstanding or the pipeline, and no email is sent.
+          </p>
+          <Field label="Date the work was completed" type="date" value={value.completed_at || ""} onChange={set("completed_at")} />
+          <Field label="Existing R2 folder (optional)" value={value.storage_folder || ""} onChange={set("storage_folder")} placeholder="e.g. mwananchi-retail-app" />
+        </div>
+      ) : null}
 
       <div>
         <p className="text-xs uppercase tracking-wide text-faint mb-2">Client</p>

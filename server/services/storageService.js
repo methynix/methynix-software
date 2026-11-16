@@ -1,4 +1,4 @@
-const { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } = require("@aws-sdk/client-s3");
+const { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, HeadObjectCommand, ListObjectsV2Command } = require("@aws-sdk/client-s3");
 const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 
 // Cloudflare R2 speaks the S3 API. Each client project gets its own folder
@@ -75,4 +75,29 @@ exports.publicUrl = (key) => {
 
 exports.remove = async (key) => {
   await getClient().send(new DeleteObjectCommand({ Bucket: BUCKET, Key: key }));
+};
+
+// Metadata for an object that is already in the bucket (null when missing).
+exports.head = async (key) => {
+  try {
+    const r = await getClient().send(new HeadObjectCommand({ Bucket: BUCKET, Key: key }));
+    return { size: r.ContentLength || 0, contentType: r.ContentType || "" };
+  } catch (err) {
+    if (err.$metadata?.httpStatusCode === 404 || err.name === "NotFound") return null;
+    throw err;
+  }
+};
+
+// Objects under a prefix, so files uploaded straight to R2 can be linked to a
+// project without uploading them again.
+exports.list = async (prefix = "") => {
+  const r = await getClient().send(new ListObjectsV2Command({ Bucket: BUCKET, Prefix: prefix, MaxKeys: 500 }));
+  return (r.Contents || [])
+    .filter((o) => o.Key && !o.Key.endsWith("/") && !o.Key.endsWith(".keep"))
+    .map((o) => ({ key: o.Key, size: o.Size || 0, modified: o.LastModified }));
+};
+
+exports.getBuffer = async (key) => {
+  const r = await getClient().send(new GetObjectCommand({ Bucket: BUCKET, Key: key }));
+  return Buffer.from(await r.Body.transformToByteArray());
 };

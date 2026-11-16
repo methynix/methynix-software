@@ -49,6 +49,8 @@ export const ClientDetail = () => {
   const [doc, setDoc] = useState(null); // { working, docId }
   const [payment, setPayment] = useState(null);
   const [upload, setUpload] = useState(null);
+  const [link, setLink] = useState(null); // { items, picked, prefix }
+  const [mail, setMail] = useState(null); // { to, subject, message, ids }
   const [busy, setBusy] = useState("");
   const editorRef = useRef(null);
   const [scrollTick, setScrollTick] = useState(0);
@@ -70,9 +72,15 @@ export const ClientDetail = () => {
   const proposal = docById(project.proposal_doc_id);
 
   const setStatus = async (status) => {
-    if (status === "completed" && !window.confirm(`Mark completed? ${project.client.email ? `${project.client.email} will get a completion email.` : "There is no client email, so no email will go out."}`)) return;
+    let sendEmail = true;
+    if (status === "completed" && project.status !== "completed") {
+      if (project.client.email) {
+        sendEmail = window.confirm(`Mark completed and email ${project.client.email}?\n\nOK = mark completed and send the completion email.\nCancel = choose to mark completed without emailing.`);
+        if (!sendEmail && !window.confirm("Mark completed WITHOUT sending any email?")) return;
+      } else if (!window.confirm("Mark completed? There is no client email, so no email will go out.")) return;
+    }
     try {
-      const r = await clientsApi.update(project.id, { status });
+      const r = await clientsApi.update(project.id, { status, send_email: sendEmail });
       await load();
       if (r.emailed) showToast("Completed. The client has been emailed.");
       else if (r.emailError) showToast(r.emailError, "error");
@@ -211,6 +219,54 @@ export const ClientDetail = () => {
     }
   };
 
+  const openLink = async (prefix) => {
+    setLink({ items: null, picked: {}, prefix: prefix ?? `${project.storage_folder}/` });
+    try {
+      const items = await clientsApi.r2Files(project.id, prefix);
+      setLink((l) => ({ ...l, items }));
+    } catch (e) {
+      setLink(null);
+      showToast(e.message, "error");
+    }
+  };
+
+  const doLink = async () => {
+    const files = Object.entries(link.picked).filter(([, v]) => v).map(([key, category]) => ({ key, category }));
+    if (!files.length) return showToast("Tick at least one file.", "error");
+    setBusy("link");
+    try {
+      await clientsApi.linkFiles(project.id, files);
+      setLink(null);
+      await load();
+      showToast(`${files.length} file${files.length === 1 ? "" : "s"} linked. Nothing was re-uploaded.`);
+    } catch (e) {
+      showToast(e.message, "error");
+    } finally {
+      setBusy("");
+    }
+  };
+
+  const openMail = () =>
+    setMail({ to: project.client.email || "", subject: `${project.name} — ${getBrand(project.brand).legalName}`, message: `Hi ${project.client.name || "there"},\n\n`, ids: {} });
+
+  const doMail = async () => {
+    setBusy("mail");
+    try {
+      const r = await clientsApi.emailClient(project.id, {
+        to: mail.to,
+        subject: mail.subject,
+        message: mail.message,
+        file_ids: Object.keys(mail.ids).filter((k) => mail.ids[k]),
+      });
+      setMail(null);
+      showToast(`Email sent${r.sent ? ` with ${r.sent} attachment${r.sent === 1 ? "" : "s"}` : ""}.`);
+    } catch (e) {
+      showToast(e.message, "error");
+    } finally {
+      setBusy("");
+    }
+  };
+
   const generateButtons = (type) => (
     <div className="flex flex-wrap gap-1.5">
       {BRAND_LIST.map((b) => (
@@ -267,7 +323,8 @@ export const ClientDetail = () => {
         subtitle={`${project.client.company || project.client.name || "No client"}${project.client.email ? ` · ${project.client.email}` : ""} · Ref ${String(project.ref_no || "").padStart(4, "0")} · ${getBrand(project.brand).legalName}`}
         actions={
           <>
-            <Pill tone={s.tone}>{s.label}</Pill>
+            <Pill tone={s.tone}>{project.legacy ? "Past client" : s.label}</Pill>
+            <Button variant="ghost" onClick={openMail}>Email client</Button>
             <select
               value={project.status}
               onChange={(e) => setStatus(e.target.value)}
@@ -281,7 +338,16 @@ export const ClientDetail = () => {
         }
       />
 
-      <Card className="mb-4">
+      {project.legacy ? (
+        <Card className="mb-4">
+          <p className="text-sm font-medium">Past client</p>
+          <p className="text-xs text-dim mt-1">
+            Finished before this system{project.completed_at ? ` (${fmtDate(project.completed_at)})` : ""}. Paid and settled: it is kept as a record only and does not appear in revenue, outstanding money or the pipeline.
+          </p>
+        </Card>
+      ) : null}
+
+      {project.legacy ? null : <Card className="mb-4">
         <Stepper status={project.status} />
         <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -293,7 +359,7 @@ export const ClientDetail = () => {
         {project.deadline ? (
           <p className={`text-xs mt-4 ${dueTone(project.deadline)}`}>Deadline {fmtDate(project.deadline)} · {dueLabel(project.deadline)}</p>
         ) : null}
-      </Card>
+      </Card>}
 
       <div ref={editorRef}>
         {doc ? (
@@ -347,7 +413,7 @@ export const ClientDetail = () => {
 
           <Card
             title="Files in R2"
-            actions={<Button variant="ghost" className="!py-1.5 text-xs" onClick={() => setUpload({ file: null, category: "technical_doc" })}>Upload file</Button>}
+            actions={<div className="flex gap-2"><Button variant="ghost" className="!py-1.5 text-xs" onClick={() => openLink()}>Link from R2</Button><Button variant="ghost" className="!py-1.5 text-xs" onClick={() => setUpload({ file: null, category: "technical_doc" })}>Upload file</Button></div>}
             padded={false}
           >
             {!project.storageReady ? (
@@ -379,7 +445,7 @@ export const ClientDetail = () => {
             padded={false}
           >
             {project.payments.length === 0 ? (
-              <p className="p-5 text-sm text-dim">No payments yet.</p>
+              <p className="p-5 text-sm text-dim">{project.legacy ? "None recorded on purpose: this work was paid before the system, so revenue is untouched." : "No payments yet."}</p>
             ) : (
               <ul className="divide-y divide-line">
                 {project.payments.map((p) => (
@@ -403,7 +469,7 @@ export const ClientDetail = () => {
         </div>
 
         <div className="space-y-4">
-          <Card title="Money">
+          {project.legacy ? null : <Card title="Money">
             <dl className="space-y-2.5 text-sm">
               {[
                 ["Development price", money(project.quote)],
@@ -428,7 +494,7 @@ export const ClientDetail = () => {
                 ))}
               </div>
             ) : null}
-          </Card>
+          </Card>}
 
           <Card title="Client">
             <dl className="space-y-2 text-sm">
@@ -516,6 +582,75 @@ export const ClientDetail = () => {
             <p className="text-xs text-faint">
               Saved in <span className="font-mono">{project.storage_folder}/</span>. Uploading a signed contract moves the project to Signed.
             </p>
+          </div>
+        ) : null}
+      </Dialog>
+
+      <Dialog
+        open={Boolean(link)}
+        onClose={() => setLink(null)}
+        title="Link files already in R2"
+        footer={<><Button variant="subtle" onClick={() => setLink(null)}>Cancel</Button><Button onClick={doLink} disabled={busy === "link"}>{busy === "link" ? "Linking…" : "Link selected"}</Button></>}
+      >
+        {link ? (
+          <div className="space-y-3">
+            <div className="flex gap-2">
+              <input value={link.prefix} onChange={(e) => setLink({ ...link, prefix: e.target.value })} className="flex-1 bg-surface border border-line px-3 py-2 rounded-lg text-sm outline-none focus:border-accent font-mono" aria-label="R2 folder" />
+              <Button variant="ghost" onClick={() => openLink(link.prefix)}>Browse</Button>
+            </div>
+            {!link.items ? <p className="text-sm text-dim">Loading…</p> : link.items.length === 0 ? (
+              <p className="text-sm text-dim">No unlinked files under this folder. Type another folder above to look elsewhere in the bucket.</p>
+            ) : (
+              <ul className="divide-y divide-line max-h-72 overflow-y-auto rounded-lg border border-line">
+                {link.items.map((o) => (
+                  <li key={o.key} className="px-3 py-2 flex items-center gap-3">
+                    <input type="checkbox" checked={Boolean(link.picked[o.key])} onChange={(e) => setLink({ ...link, picked: { ...link.picked, [o.key]: e.target.checked ? link.picked[o.key] || "other" : false } })} />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm truncate">{o.key.split("/").pop()}</p>
+                      <p className="text-[11px] text-faint truncate">{o.key} · {(o.size / 1024).toFixed(0)} KB</p>
+                    </div>
+                    {link.picked[o.key] ? (
+                      <select value={link.picked[o.key]} onChange={(e) => setLink({ ...link, picked: { ...link.picked, [o.key]: e.target.value } })} className="bg-surface border border-line rounded-lg px-2 py-1 text-xs">
+                        {FILE_CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+                      </select>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <p className="text-xs text-faint">Links the existing R2 file to this project. Nothing is uploaded again.</p>
+          </div>
+        ) : null}
+      </Dialog>
+
+      <Dialog
+        open={Boolean(mail)}
+        onClose={() => setMail(null)}
+        title="Email the client"
+        footer={<><Button variant="subtle" onClick={() => setMail(null)}>Cancel</Button><Button onClick={doMail} disabled={busy === "mail"}>{busy === "mail" ? "Sending…" : "Send email"}</Button></>}
+      >
+        {mail ? (
+          <div className="space-y-3">
+            <Field label="To" value={mail.to} onChange={(e) => setMail({ ...mail, to: e.target.value })} placeholder="client@email.com" />
+            <Field label="Subject" value={mail.subject} onChange={(e) => setMail({ ...mail, subject: e.target.value })} />
+            <textarea value={mail.message} rows={7} onChange={(e) => setMail({ ...mail, message: e.target.value })} className="w-full bg-surface border border-line px-3 py-2.5 rounded-lg text-sm outline-none focus:border-accent resize-y" />
+            <div>
+              <p className="text-xs text-faint mb-1.5">Attach files from this project (read from R2)</p>
+              {docFiles.length === 0 ? <p className="text-xs text-dim">No files on this project yet. Link or upload some first.</p> : (
+                <ul className="max-h-40 overflow-y-auto space-y-1">
+                  {docFiles.map((f) => (
+                    <li key={f.id}>
+                      <label className="flex items-center gap-2 text-sm cursor-pointer">
+                        <input type="checkbox" checked={Boolean(mail.ids[f.id])} onChange={(e) => setMail({ ...mail, ids: { ...mail.ids, [f.id]: e.target.checked } })} />
+                        <span className="truncate">{f.name}</span>
+                        <span className="text-xs text-faint">{(f.size / 1024).toFixed(0)} KB</span>
+                      </label>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <p className="text-xs text-faint">Sending this never changes the project stage or any money figures.</p>
           </div>
         ) : null}
       </Dialog>

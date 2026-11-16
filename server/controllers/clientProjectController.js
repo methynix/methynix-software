@@ -76,13 +76,23 @@ exports.create = catchAsync(async (req, res, next) => {
   if (!req.body.name || !String(req.body.name).trim()) {
     return next(new AppError("Give the project a name.", 400));
   }
-  const folder = await uniqueFolder(req.body.name);
+  const legacy = Boolean(req.body.legacy);
+  // Past work may already live in an R2 folder; reuse it instead of a new one.
+  let folder;
+  if (legacy && req.body.storage_folder) {
+    folder = String(req.body.storage_folder).trim().replace(/^\/+|\/+$/g, "");
+    if (await ClientProject.folderTaken(folder)) return next(new AppError("That R2 folder already belongs to another project.", 400));
+  } else {
+    folder = await uniqueFolder(req.body.name);
+  }
   const ref_no = req.body.ref_no || (await Counter.next("project"));
-  const project = await ClientProject.create({ ...req.body, ref_no }, folder);
+  // Past clients are filed as completed straight away, with no payments and no emails.
+  const input = legacy ? { ...req.body, ref_no, status: "completed" } : { ...req.body, ref_no };
+  const project = await ClientProject.create(input, folder);
 
   // Make the folder visible in the R2 dashboard straight away. Not fatal: it
   // appears anyway with the first upload.
-  if (storage.isConfigured()) {
+  if (storage.isConfigured() && !(legacy && req.body.storage_folder)) {
     storage.createFolder(folder).catch((err) => console.error("[R2] Folder create failed:", err.message));
   }
 
@@ -97,7 +107,7 @@ exports.update = catchAsync(async (req, res, next) => {
   // The client hears from us automatically when their project is completed.
   let emailed = false;
   let emailError = null;
-  if (project.status === "completed" && before.status !== "completed" && !project.completion_email_sent_at) {
+  if (project.status === "completed" && before.status !== "completed" && !project.completion_email_sent_at && !project.legacy && req.body.send_email !== false) {
     if (project.client.email) {
       try {
         await mail.sendProjectCompleted({ brand: project.brand, project });
@@ -213,6 +223,62 @@ exports.removeFile = catchAsync(async (req, res, next) => {
   if (storage.isConfigured()) await storage.remove(file.key);
   const data = await ClientProject.removeFile(project.id, file.id);
   res.status(200).json({ status: "success", data });
+});
+
+// R2 objects under this project's folder (or another prefix) that are not yet
+// attached to the project, so they can be linked without re-uploading.
+exports.r2Files = catchAsync(async (req, res, next) => {
+  const project = await loadProject(req.params.id, next);
+  if (!project) return;
+  if (!storage.isConfigured()) return next(new AppError("Cloudflare R2 is not configured yet.", 400));
+  const prefix = String(req.query.prefix || `${project.storage_folder}/`).replace(/^\/+/, "");
+  const linked = new Set(project.files.map((f) => f.key));
+  const objects = (await storage.list(prefix)).filter((o) => !linked.has(o.key));
+  res.status(200).json({ status: "success", data: objects, prefix });
+});
+
+// Attach files that are already in R2 to the project. Nothing is uploaded.
+exports.linkFiles = catchAsync(async (req, res, next) => {
+  let project = await loadProject(req.params.id, next);
+  if (!project) return;
+  if (!storage.isConfigured()) return next(new AppError("Cloudflare R2 is not configured yet.", 400));
+  const items = Array.isArray(req.body.files) ? req.body.files : [];
+  if (!items.length) return next(new AppError("Choose at least one file to link.", 400));
+
+  for (const item of items) {
+    const key = String(item.key || "").replace(/^\/+/, "");
+    if (!key || project.files.some((f) => f.key === key)) continue;
+    const meta = await storage.head(key);
+    if (!meta) return next(new AppError(`${key} was not found in R2.`, 404));
+    const cat = ClientProject.FILE_CATEGORIES.includes(item.category) ? item.category : "other";
+    project = await ClientProject.addFile(project.id, {
+      key,
+      name: item.name || key.split("/").pop().replace(/^\d{10,}-/, ""),
+      category: cat,
+      size: meta.size,
+      content_type: meta.contentType,
+    });
+  }
+  res.status(200).json({ status: "success", data: project });
+});
+
+// Email the client at any time with files already on the project attached
+// (read from R2, so nothing is re-uploaded). Does not touch the project stage.
+exports.emailClient = catchAsync(async (req, res, next) => {
+  const project = await loadProject(req.params.id, next);
+  if (!project) return;
+  const { to, subject, message, file_ids = [] } = req.body;
+  if (!to || !String(to).trim()) return next(new AppError("Add the client's email address.", 400));
+  if (!subject || !String(subject).trim()) return next(new AppError("Add a subject.", 400));
+
+  const files = project.files.filter((f) => file_ids.includes(f.id));
+  if (files.length && !storage.isConfigured()) return next(new AppError("Cloudflare R2 is not configured yet.", 400));
+  const total = files.reduce((s, f) => s + (f.size || 0), 0);
+  if (total > 35 * 1024 * 1024) return next(new AppError("Attachments are over the 35 MB email limit. Send fewer files.", 400));
+
+  const attachments = await Promise.all(files.map(async (f) => ({ filename: f.name, content: await storage.getBuffer(f.key) })));
+  await mail.sendClientDocument({ brand: project.brand, to: String(to).trim(), subject, message: message || "", attachments });
+  res.status(200).json({ status: "success", sent: attachments.length });
 });
 
 exports.advance = advance;

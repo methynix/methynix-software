@@ -34,7 +34,8 @@ exports.overview = catchAsync(async (req, res) => {
     if (p.project_id) paidByProject[p.project_id] = (paidByProject[p.project_id] || 0) + p.amount;
   });
 
-  const live = projects.filter((p) => !["lost"].includes(p.status));
+  // Past work (legacy) is a record only; it never counts towards money owed or pipeline.
+  const live = projects.filter((p) => !["lost"].includes(p.status) && !p.legacy);
   const signedStages = ["signed", "deposit_paid", "in_progress", "delivered", "completed"];
   const outstanding = sumBy(
     live.filter((p) => signedStages.includes(p.status)),
@@ -43,7 +44,7 @@ exports.overview = catchAsync(async (req, res) => {
 
   const pipeline = {};
   ClientProject.STATUSES.forEach((s) => (pipeline[s] = 0));
-  projects.forEach((p) => (pipeline[p.status] += 1));
+  projects.filter((p) => !p.legacy).forEach((p) => (pipeline[p.status] += 1));
 
   // Monthly revenue for the last 12 months, oldest first.
   const months = [];
@@ -85,14 +86,15 @@ exports.overview = catchAsync(async (req, res) => {
         revenue_this_year: sumBy(inPeriod(yearKey), (p) => p.amount),
         outstanding,
         pipeline_value: sumBy(
-          projects.filter((p) => !["lost", "completed", ...signedStages].includes(p.status)),
+          projects.filter((p) => !p.legacy && !["lost", "completed", ...signedStages].includes(p.status)),
           (p) => p.quote
         ),
       },
       counts: {
-        active_clients: projects.filter((p) => ["deposit_paid", "in_progress", "delivered", "signed"].includes(p.status)).length,
-        open_leads: projects.filter((p) => ["lead", "contacted", "discovery", "proposal_sent", "accepted", "contract_sent"].includes(p.status)).length,
-        completed: pipeline.completed,
+        active_clients: projects.filter((p) => !p.legacy && ["deposit_paid", "in_progress", "delivered", "signed"].includes(p.status)).length,
+        open_leads: projects.filter((p) => !p.legacy && ["lead", "contacted", "discovery", "proposal_sent", "accepted", "contract_sent"].includes(p.status)).length,
+        completed: projects.filter((p) => p.status === "completed" && !p.legacy).length,
+        past_clients: projects.filter((p) => p.legacy).length,
         studio_active: studio.filter((p) => p.status === "in_progress").length,
         pending_reminders: customReminders.length,
       },

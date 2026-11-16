@@ -80,6 +80,9 @@ router.patch("/clients/:id", clientProjectController.update);
 router.delete("/clients/:id", clientProjectController.remove);
 router.post("/clients/:id/deliver", clientProjectController.deliver);
 router.post("/clients/:id/files", clientProjectController.uploadFile);
+router.get("/clients/:id/r2-files", clientProjectController.r2Files);
+router.post("/clients/:id/files/link", clientProjectController.linkFiles);
+router.post("/clients/:id/email", clientProjectController.emailClient);
 router.get("/clients/:id/files/:fileId/url", clientProjectController.fileUrl);
 router.delete("/clients/:id/files/:fileId", clientProjectController.removeFile);
 

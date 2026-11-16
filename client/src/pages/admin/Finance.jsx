@@ -49,7 +49,7 @@ export const Finance = () => {
   if (!summary) return <SkeletonFinance />;
   const t = summary.totals;
   const pct = (k) => `${Math.round(summary.split[k] * 100)}%`;
-  const billed = projects.filter((p) => p.quote && !["lost", "lead", "contacted", "discovery"].includes(p.status));
+  const billed = projects.filter((p) => !p.legacy && p.quote && !["lost", "lead", "contacted", "discovery"].includes(p.status));
 
   return (
     <>

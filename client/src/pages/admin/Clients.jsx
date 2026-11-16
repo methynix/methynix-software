@@ -5,16 +5,17 @@ import { useUI } from "../../context/UIContext";
 import { SkeletonBoard } from "../../components/ui/Skeleton";
 import { PageHeader, Button, Dialog, Pill, Empty, money, fmtDate, dueLabel, dueTone } from "./ui";
 import { BOARD, STAGES, stage } from "./constants";
-import { LeadForm, emptyLead, leadPayload } from "./LeadForm";
+import { LeadForm, emptyLead, emptyPastClient, leadPayload } from "./LeadForm";
 
 const ProjectCard = ({ p }) => {
+  if (p.legacy) p = { ...p, quote: 0 };
   const s = stage(p.status);
   const pct = p.quote ? Math.min(100, Math.round((p.paid / p.quote) * 100)) : 0;
   return (
     <Link to={`/admin/dashboard/clients/${p.id}`} className="block rounded-xl border border-line bg-surface p-3.5 hover:border-accent/40 transition-colors">
       <div className="flex items-start justify-between gap-2">
         <p className="text-sm font-medium leading-snug">{p.name}</p>
-        <Pill tone={s.tone}>{s.label}</Pill>
+        <Pill tone={s.tone}>{p.legacy ? "Past" : s.label}</Pill>
       </div>
       <p className="text-xs text-dim mt-1 truncate">{p.client.company || p.client.name || "No client name"}</p>
       {p.quote ? (
@@ -69,7 +70,7 @@ export const Clients = () => {
     setSaving(true);
     try {
       const created = await clientsApi.create(leadPayload(form));
-      showToast("Lead created.");
+      showToast(form.legacy ? "Past client saved." : "Lead created.");
       navigate(`/admin/dashboard/clients/${created.id}`);
     } catch (e) {
       showToast(e.message, "error");
@@ -85,7 +86,7 @@ export const Clients = () => {
       <PageHeader
         title="Clients"
         subtitle="Every lead and client project, from first contact to completion."
-        actions={<Button onClick={() => setForm(emptyLead())}>New lead</Button>}
+        actions={<><Button variant="ghost" onClick={() => setForm(emptyPastClient())}>Add past client</Button><Button onClick={() => setForm(emptyLead())}>New lead</Button></>}
       />
 
       <div className="flex flex-wrap items-center gap-3 mb-5">
@@ -157,9 +158,9 @@ export const Clients = () => {
                 <tr key={p.id} className="hover:bg-raised/30 cursor-pointer" onClick={() => navigate(`/admin/dashboard/clients/${p.id}`)}>
                   <td className="px-4 py-3 font-medium">{p.name}</td>
                   <td className="px-4 py-3 text-dim">{p.client.company || p.client.name}</td>
-                  <td className="px-4 py-3"><Pill tone={stage(p.status).tone}>{stage(p.status).label}</Pill></td>
+                  <td className="px-4 py-3"><Pill tone={stage(p.status).tone}>{p.legacy ? "Past client" : stage(p.status).label}</Pill></td>
                   <td className="px-4 py-3 text-right tabular-nums">{p.quote ? money(p.quote) : "—"}</td>
-                  <td className="px-4 py-3 text-right tabular-nums">{money(p.paid)}</td>
+                  <td className="px-4 py-3 text-right tabular-nums">{p.legacy ? "—" : money(p.paid)}</td>
                   <td className={`px-4 py-3 ${dueTone(p.deadline)}`}>{p.deadline ? `${fmtDate(p.deadline)} · ${dueLabel(p.deadline)}` : "—"}</td>
                 </tr>
               ))}
@@ -171,12 +172,12 @@ export const Clients = () => {
       <Dialog
         open={Boolean(form)}
         onClose={() => setForm(null)}
-        title="New lead"
+        title={form?.legacy ? "Add past client" : "New lead"}
         wide
         footer={
           <>
             <Button variant="subtle" onClick={() => setForm(null)}>Cancel</Button>
-            <Button onClick={create} disabled={saving}>{saving ? "Creating…" : "Create lead"}</Button>
+            <Button onClick={create} disabled={saving}>{saving ? "Saving…" : form?.legacy ? "Save past client" : "Create lead"}</Button>
           </>
         }
       >

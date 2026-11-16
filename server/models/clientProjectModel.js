@@ -64,6 +64,9 @@ const clientProjectSchema = new mongoose.Schema({
       cycle: { type: String, default: "yearly" },
     },
   ],
+  // Work finished before this system existed. Kept as a record only: never
+  // counted as outstanding, pipeline or revenue, and never emailed about.
+  legacy: { type: Boolean, default: false },
   status: { type: String, enum: STATUSES, default: "lead" },
   status_history: [{ _id: false, status: String, at: { type: Date, default: Date.now } }],
   start_date: { type: Date, default: null },
@@ -100,6 +103,7 @@ const serialize = (d) => ({
   },
   quote: d.quote || 0,
   production_costs: d.production_costs || [],
+  legacy: Boolean(d.legacy),
   status: d.status,
   status_history: d.status_history || [],
   start_date: d.start_date,
@@ -127,7 +131,7 @@ const serialize = (d) => ({
 const EDITABLE = [
   "name", "ref_no", "brand", "type", "source", "description", "client", "quote", "production_costs",
   "start_date", "deadline", "notes", "proposal_doc_id", "contract_doc_id",
-  "technical_doc_id",
+  "technical_doc_id", "legacy",
 ];
 
 exports.STATUSES = STATUSES;
@@ -155,6 +159,7 @@ exports.create = async (input, storageFolder) => {
     if (input[k] !== undefined) patch[k] = input[k];
   });
   patch.status_history = [{ status: patch.status, at: new Date() }];
+  if (patch.status === "completed") patch.completed_at = input.completed_at ? new Date(input.completed_at) : new Date();
   const doc = await ClientProject.create(patch);
   return serialize(doc);
 };

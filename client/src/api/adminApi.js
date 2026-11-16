@@ -36,6 +36,9 @@ export const clientsApi = {
   deliver: (id, body) => apiClient.post(`/admin/clients/${id}/deliver`, body, SLOW).then((r) => r.data),
   uploadFile: (id, body) => apiClient.post(`/admin/clients/${id}/files`, body, SLOW).then(data),
   fileUrl: (id, fileId) => apiClient.get(`/admin/clients/${id}/files/${fileId}/url`).then((r) => r.data.url),
+  r2Files: (id, prefix) => apiClient.get(`/admin/clients/${id}/r2-files`, { params: prefix ? { prefix } : {} }).then(data),
+  linkFiles: (id, files) => apiClient.post(`/admin/clients/${id}/files/link`, { files }).then(data),
+  emailClient: (id, body) => apiClient.post(`/admin/clients/${id}/email`, body, SLOW).then((r) => r.data),
   removeFile: (id, fileId) => apiClient.delete(`/admin/clients/${id}/files/${fileId}`).then(data),
 };
 

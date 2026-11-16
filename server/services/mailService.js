@@ -70,7 +70,8 @@ const send = async (payload) => {
 
 // A proposal, contract, technical document or receipt sent to a client with
 // the PDF attached.
-exports.sendClientDocument = async ({ brand, to, subject, message, attachment }) => {
+exports.sendClientDocument = async ({ brand, to, subject, message, attachment, attachments }) => {
+  const list = attachments || (attachment ? [attachment] : []);
   const b = brandMail(brand);
   await send({
     from: b.from(),
@@ -78,7 +79,7 @@ exports.sendClientDocument = async ({ brand, to, subject, message, attachment })
     replyTo: TO || undefined,
     subject,
     html: shell(paragraphs(message), b.name),
-    attachments: attachment ? [{ filename: attachment.filename, content: attachment.content }] : undefined,
+    attachments: list.length ? list.map((a) => ({ filename: a.filename, content: a.content })) : undefined,
   });
 };
 
