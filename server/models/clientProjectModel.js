@@ -14,6 +14,8 @@ const STATUSES = [
   "in_progress",
   "delivered",
   "completed",
+  // Finished projects that are still looked after for a recurring fee/period.
+  "maintenance",
   "on_hold",
   "lost",
 ];
@@ -72,6 +74,8 @@ const clientProjectSchema = new mongoose.Schema({
   start_date: { type: Date, default: null },
   deadline: { type: Date, default: null },
   completed_at: { type: Date, default: null },
+  // Only used while status is "maintenance": when the current maintenance period ends.
+  maintenance_deadline: { type: Date, default: null },
   storage_folder: { type: String, required: true, unique: true },
   proposal_doc_id: { type: String, default: null },
   contract_doc_id: { type: String, default: null },
@@ -109,6 +113,7 @@ const serialize = (d) => ({
   start_date: d.start_date,
   deadline: d.deadline,
   completed_at: d.completed_at,
+  maintenance_deadline: d.maintenance_deadline || null,
   storage_folder: d.storage_folder,
   proposal_doc_id: d.proposal_doc_id,
   contract_doc_id: d.contract_doc_id,
@@ -131,7 +136,7 @@ const serialize = (d) => ({
 const EDITABLE = [
   "name", "ref_no", "brand", "type", "source", "description", "client", "quote", "production_costs",
   "start_date", "deadline", "notes", "proposal_doc_id", "contract_doc_id",
-  "technical_doc_id", "legacy",
+  "technical_doc_id", "legacy", "maintenance_deadline",
 ];
 
 exports.STATUSES = STATUSES;

@@ -11,6 +11,7 @@ export const STAGES = [
   { key: "in_progress", label: "In progress", tone: "accent", next: "Build it. Mark delivered when you hand it over." },
   { key: "delivered", label: "Delivered", tone: "accent", next: "Collect the balance, then mark completed." },
   { key: "completed", label: "Completed", tone: "accent", next: "Done. The client was emailed automatically." },
+  { key: "maintenance", label: "Maintenance", tone: "blue", next: "Looked after on an ongoing basis. Renew the maintenance deadline when the period is extended." },
   { key: "on_hold", label: "On hold", tone: "neutral", next: "Paused." },
   { key: "lost", label: "Lost", tone: "red", next: "Closed without a deal." },
 ];
@@ -24,6 +25,7 @@ export const BOARD = [
   { label: "Contract", keys: ["contract_sent", "signed"] },
   { label: "Building", keys: ["deposit_paid", "in_progress"] },
   { label: "Delivered", keys: ["delivered", "completed"] },
+  { label: "Maintenance", keys: ["maintenance"] },
 ];
 
 export const PROJECT_TYPES = [
@@ -52,3 +54,11 @@ export const FILE_CATEGORIES = [
   { value: "receipt", label: "Receipt" },
   { value: "other", label: "Other" },
 ];
+
+// The deadline worth showing for a project, or null. Finished and past work
+// has nothing left to be "overdue"; maintenance projects track their own date.
+export const trackedDeadline = (p) => {
+  if (!p || p.legacy || ["completed", "lost"].includes(p.status)) return null;
+  if (p.status === "maintenance") return p.maintenance_deadline ? { date: p.maintenance_deadline, label: "Maintenance until" } : null;
+  return p.deadline ? { date: p.deadline, label: "Deadline" } : null;
+};

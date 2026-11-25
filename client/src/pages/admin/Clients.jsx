@@ -4,12 +4,13 @@ import { clientsApi } from "../../api/adminApi";
 import { useUI } from "../../context/UIContext";
 import { SkeletonBoard } from "../../components/ui/Skeleton";
 import { PageHeader, Button, Dialog, Pill, Empty, money, fmtDate, dueLabel, dueTone } from "./ui";
-import { BOARD, STAGES, stage } from "./constants";
+import { BOARD, STAGES, stage, trackedDeadline } from "./constants";
 import { LeadForm, emptyLead, emptyPastClient, leadPayload } from "./LeadForm";
 
 const ProjectCard = ({ p }) => {
   if (p.legacy) p = { ...p, quote: 0 };
   const s = stage(p.status);
+  const tracked = trackedDeadline(p);
   const pct = p.quote ? Math.min(100, Math.round((p.paid / p.quote) * 100)) : 0;
   return (
     <Link to={`/admin/dashboard/clients/${p.id}`} className="block rounded-xl border border-line bg-surface p-3.5 hover:border-accent/40 transition-colors">
@@ -26,7 +27,7 @@ const ProjectCard = ({ p }) => {
           <p className="text-[11px] text-faint mt-1 tabular-nums">{money(p.paid)} of {money(p.quote)}</p>
         </div>
       ) : null}
-      {p.deadline ? <p className={`text-[11px] mt-2 ${dueTone(p.deadline)}`}>Due {fmtDate(p.deadline)} · {dueLabel(p.deadline)}</p> : null}
+      {tracked ? <p className={`text-[11px] mt-2 ${dueTone(tracked.date)}`}>{tracked.label} {fmtDate(tracked.date)} · {dueLabel(tracked.date)}</p> : null}
     </Link>
   );
 };
@@ -161,7 +162,7 @@ export const Clients = () => {
                   <td className="px-4 py-3"><Pill tone={stage(p.status).tone}>{p.legacy ? "Past client" : stage(p.status).label}</Pill></td>
                   <td className="px-4 py-3 text-right tabular-nums">{p.quote ? money(p.quote) : "—"}</td>
                   <td className="px-4 py-3 text-right tabular-nums">{p.legacy ? "—" : money(p.paid)}</td>
-                  <td className={`px-4 py-3 ${dueTone(p.deadline)}`}>{p.deadline ? `${fmtDate(p.deadline)} · ${dueLabel(p.deadline)}` : "—"}</td>
+                  <td className={`px-4 py-3 ${dueTone(trackedDeadline(p)?.date)}`}>{trackedDeadline(p) ? `${fmtDate(trackedDeadline(p).date)} · ${dueLabel(trackedDeadline(p).date)}` : "—"}</td>
                 </tr>
               ))}
             </tbody>

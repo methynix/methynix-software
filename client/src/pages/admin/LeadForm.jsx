@@ -13,6 +13,7 @@ export const emptyLead = () => ({
   production_costs: [],
   start_date: "",
   deadline: "",
+  maintenance_deadline: "",
   notes: "",
 });
 
@@ -28,6 +29,7 @@ export const leadPayload = (f) => ({
     .map((c) => ({ ...c, amount: Number(String(c.amount || 0).replace(/[,\s]/g, "")) || 0 })),
   start_date: f.start_date || null,
   deadline: f.deadline || null,
+  maintenance_deadline: f.maintenance_deadline || null,
   completed_at: f.completed_at || null,
   storage_folder: f.storage_folder || undefined,
 });
@@ -75,6 +77,10 @@ export const LeadForm = ({ value, onChange }) => {
         <Field label="Start date" type="date" value={value.start_date} onChange={set("start_date")} />
         <Field label="Deadline" type="date" value={value.deadline} onChange={set("deadline")} hint="You get reminder emails 7, 3 and 1 day before." />
       </div>
+
+      {value.status === "maintenance" ? (
+        <Field label="Maintenance deadline" type="date" value={value.maintenance_deadline || ""} onChange={set("maintenance_deadline")} hint="When the current maintenance period ends. You get reminder emails before it." />
+      ) : null}
 
       <div>
         <div className="flex items-center justify-between mb-2">

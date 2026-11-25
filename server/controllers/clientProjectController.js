@@ -8,12 +8,12 @@ const AppError = require("../utils/appError");
 const catchAsync = require("../utils/catchAsync");
 
 // Linear order of the happy path; on_hold and lost sit outside it.
-const FLOW = ClientProject.STATUSES.filter((s) => !["on_hold", "lost"].includes(s));
+const FLOW = ClientProject.STATUSES.filter((s) => !["on_hold", "lost", "maintenance"].includes(s));
 
 // Move a project forward to `target` when an action implies it (sending a
 // proposal, uploading a signed contract...). Never moves it backwards.
 const advance = async (project, target) => {
-  if (["on_hold", "lost"].includes(project.status)) return project;
+  if (["on_hold", "lost", "maintenance"].includes(project.status)) return project;
   if (FLOW.indexOf(target) <= FLOW.indexOf(project.status)) return project;
   return ClientProject.update(project.id, { status: target });
 };

@@ -75,10 +75,20 @@ const processDigests = async () => {
       Model: ClientProject.model,
       due: await collect(
         ClientProject.model,
-        { status: { $nin: ClientProject.CLOSED }, deadline: { $ne: null } },
+        { status: { $nin: [...ClientProject.CLOSED, "maintenance"] }, deadline: { $ne: null } },
         "deadline",
         RULES.client,
         (d) => ({ group: "Client project", title: d.name, detail: `${d.client?.name || ""} · ${d.status.replace(/_/g, " ")}` })
+      ),
+    },
+    {
+      Model: ClientProject.model,
+      due: await collect(
+        ClientProject.model,
+        { status: "maintenance", legacy: { $ne: true }, maintenance_deadline: { $ne: null } },
+        "maintenance_deadline",
+        RULES.client,
+        (d) => ({ group: "Maintenance", title: d.name, detail: `${d.client?.name || ""} · maintenance period ends` })
       ),
     },
     {

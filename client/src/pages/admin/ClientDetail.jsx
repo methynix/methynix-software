@@ -4,7 +4,7 @@ import { clientsApi, paymentsApi, fileToBase64 } from "../../api/adminApi";
 import { useUI } from "../../context/UIContext";
 import { SkeletonClientDetail, SkeletonEditor } from "../../components/ui/Skeleton";
 import { PageHeader, Card, Button, Dialog, Field, Select, Pill, Empty, money, fmtDate, toInputDate, dueLabel, dueTone } from "./ui";
-import { STAGES, stage, FILE_CATEGORIES } from "./constants";
+import { STAGES, stage, FILE_CATEGORIES, trackedDeadline } from "./constants";
 import { LeadForm, leadPayload } from "./LeadForm";
 import { BRAND_LIST, getBrand } from "../../features/documents/brands";
 import { defaultWorking } from "../../features/documents/defaults";
@@ -14,7 +14,7 @@ import { amountInWords } from "../../features/documents/format";
 const DocumentEditor = lazy(() => import("../../features/documents/DocumentEditor").then((m) => ({ default: m.DocumentEditor })));
 const loadRender = () => import("../../features/documents/pdf/render");
 
-const FLOW = STAGES.filter((s) => !["on_hold", "lost"].includes(s.key));
+const FLOW = STAGES.filter((s) => !["on_hold", "lost", "maintenance"].includes(s.key));
 const DEPOSIT_RATE = 0.4;
 const MAX_UPLOAD = 25 * 1024 * 1024;
 
@@ -25,7 +25,7 @@ const DOCS = [
 ];
 
 const Stepper = ({ status }) => {
-  const idx = FLOW.findIndex((s) => s.key === status);
+  const idx = status === "maintenance" ? FLOW.length - 1 : FLOW.findIndex((s) => s.key === status);
   return (
     <div className="flex gap-1 overflow-x-auto pb-1">
       {FLOW.map((s, i) => (
@@ -49,6 +49,7 @@ export const ClientDetail = () => {
   const [doc, setDoc] = useState(null); // { working, docId }
   const [payment, setPayment] = useState(null);
   const [upload, setUpload] = useState(null);
+  const [maint, setMaint] = useState(null); // { date }
   const [link, setLink] = useState(null); // { items, picked, prefix }
   const [mail, setMail] = useState(null); // { to, subject, message, ids }
   const [busy, setBusy] = useState("");
@@ -219,6 +220,18 @@ export const ClientDetail = () => {
     }
   };
 
+  const saveMaint = async () => {
+    if (!maint.date) return showToast("Pick the maintenance deadline.", "error");
+    try {
+      await clientsApi.update(project.id, { status: "maintenance", maintenance_deadline: maint.date, send_email: false });
+      setMaint(null);
+      await load();
+      showToast("Maintenance deadline saved.");
+    } catch (e) {
+      showToast(e.message, "error");
+    }
+  };
+
   const openLink = async (prefix) => {
     setLink({ items: null, picked: {}, prefix: prefix ?? `${project.storage_folder}/` });
     try {
@@ -309,6 +322,13 @@ export const ClientDetail = () => {
         <Button onClick={() => setStatus("completed")}>Mark completed & email client</Button>
       </>
     ),
+    completed: <Button variant="ghost" onClick={() => setMaint({ date: "" })}>Start maintenance</Button>,
+    maintenance: (
+      <>
+        <Button onClick={() => setMaint({ date: toInputDate(project.maintenance_deadline) })}>{project.maintenance_deadline ? "Renew / change deadline" : "Set maintenance deadline"}</Button>
+        <Button variant="ghost" onClick={() => setStatus("completed")}>End maintenance</Button>
+      </>
+    ),
     on_hold: <Button onClick={() => setStatus(project.status_history.filter((h) => h.status !== "on_hold").slice(-1)[0]?.status || "lead")}>Resume</Button>,
   }[project.status];
 
@@ -333,7 +353,7 @@ export const ClientDetail = () => {
             >
               {STAGES.map((x) => <option key={x.key} value={x.key}>{x.label}</option>)}
             </select>
-            <Button variant="ghost" onClick={() => setEditing({ ...project, quote: String(project.quote || ""), start_date: toInputDate(project.start_date), deadline: toInputDate(project.deadline) })}>Edit</Button>
+            <Button variant="ghost" onClick={() => setEditing({ ...project, quote: String(project.quote || ""), start_date: toInputDate(project.start_date), deadline: toInputDate(project.deadline), maintenance_deadline: toInputDate(project.maintenance_deadline) })}>Edit</Button>
           </>
         }
       />
@@ -356,8 +376,8 @@ export const ClientDetail = () => {
           </div>
           <div className="flex flex-wrap items-center gap-2">{nextActions}</div>
         </div>
-        {project.deadline ? (
-          <p className={`text-xs mt-4 ${dueTone(project.deadline)}`}>Deadline {fmtDate(project.deadline)} · {dueLabel(project.deadline)}</p>
+        {trackedDeadline(project) ? (
+          <p className={`text-xs mt-4 ${dueTone(trackedDeadline(project).date)}`}>{trackedDeadline(project).label} {fmtDate(trackedDeadline(project).date)} · {dueLabel(trackedDeadline(project).date)}</p>
         ) : null}
       </Card>}
 
@@ -582,6 +602,20 @@ export const ClientDetail = () => {
             <p className="text-xs text-faint">
               Saved in <span className="font-mono">{project.storage_folder}/</span>. Uploading a signed contract moves the project to Signed.
             </p>
+          </div>
+        ) : null}
+      </Dialog>
+
+      <Dialog
+        open={Boolean(maint)}
+        onClose={() => setMaint(null)}
+        title="Maintenance"
+        footer={<><Button variant="subtle" onClick={() => setMaint(null)}>Cancel</Button><Button onClick={saveMaint}>Save</Button></>}
+      >
+        {maint ? (
+          <div className="space-y-3">
+            <Field label="Maintenance deadline" type="date" value={maint.date} onChange={(e) => setMaint({ date: e.target.value })} />
+            <p className="text-xs text-faint">The project stays in Maintenance until you end it. You get reminder emails before this date; once it passes, set a new one to renew.</p>
           </div>
         ) : null}
       </Dialog>

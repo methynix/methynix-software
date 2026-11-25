@@ -36,7 +36,7 @@ exports.overview = catchAsync(async (req, res) => {
 
   // Past work (legacy) is a record only; it never counts towards money owed or pipeline.
   const live = projects.filter((p) => !["lost"].includes(p.status) && !p.legacy);
-  const signedStages = ["signed", "deposit_paid", "in_progress", "delivered", "completed"];
+  const signedStages = ["signed", "deposit_paid", "in_progress", "delivered", "completed", "maintenance"];
   const outstanding = sumBy(
     live.filter((p) => signedStages.includes(p.status)),
     (p) => Math.max((p.quote || 0) - (paidByProject[p.id] || 0), 0)
@@ -60,6 +60,9 @@ exports.overview = catchAsync(async (req, res) => {
     ...projects
       .filter((p) => !ClientProject.CLOSED.includes(p.status) && within(p.deadline, 30))
       .map((p) => ({ kind: "client", id: p.id, title: p.name, subtitle: p.client.name, date: p.deadline, status: p.status })),
+    ...projects
+      .filter((p) => p.status === "maintenance" && !p.legacy && within(p.maintenance_deadline, 30))
+      .map((p) => ({ kind: "maintenance", id: p.id, title: p.name, subtitle: `${p.client.name || "Client"} · maintenance`, date: p.maintenance_deadline, status: p.status })),
     ...studio
       .filter((p) => p.status !== "done" && within(p.deadline, 30))
       .map((p) => ({ kind: p.category, id: p.id, title: p.name, subtitle: `${p.category} project`, date: p.deadline, status: p.status })),
@@ -92,6 +95,7 @@ exports.overview = catchAsync(async (req, res) => {
       },
       counts: {
         active_clients: projects.filter((p) => !p.legacy && ["deposit_paid", "in_progress", "delivered", "signed"].includes(p.status)).length,
+        maintenance: projects.filter((p) => p.status === "maintenance").length,
         open_leads: projects.filter((p) => !p.legacy && ["lead", "contacted", "discovery", "proposal_sent", "accepted", "contract_sent"].includes(p.status)).length,
         completed: projects.filter((p) => p.status === "completed" && !p.legacy).length,
         past_clients: projects.filter((p) => p.legacy).length,

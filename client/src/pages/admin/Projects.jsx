@@ -4,7 +4,7 @@ import { studioApi, clientsApi } from "../../api/adminApi";
 import { useUI } from "../../context/UIContext";
 import { SkeletonProjects } from "../../components/ui/Skeleton";
 import { PageHeader, Button, Dialog, Field, Select, Pill, Empty, fmtDate, toInputDate, dueLabel, dueTone } from "./ui";
-import { stage } from "./constants";
+import { stage, trackedDeadline } from "./constants";
 
 const TABS = [
   { key: "mother", label: "Mother projects", blurb: "The big Methynix products and long-term bets." },
@@ -69,7 +69,7 @@ export const Projects = () => {
   const current = TABS.find((t) => t.key === tab);
   const list =
     tab === "client"
-      ? clients.map((c) => ({ id: c.id, name: c.name, description: c.client.company || c.client.name, deadline: c.deadline, clientStatus: c.status }))
+      ? clients.map((c) => ({ id: c.id, name: c.name, description: c.client.company || c.client.name, deadline: trackedDeadline(c)?.date || null, clientStatus: c.status }))
       : items.filter((p) => p.category === tab).sort((a, b) => (a.status === "done") - (b.status === "done"));
 
   return (
