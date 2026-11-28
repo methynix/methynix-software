@@ -26,6 +26,8 @@ export const SITE = {
   assets: {
     logo: "https://pub-fcdacb1cbeae45269efc0e8804f4c72b.r2.dev/methynix/methynix.png",
     hero: "https://pub-fcdacb1cbeae45269efc0e8804f4c72b.r2.dev/methynix/methynix.jpg",
+    // Full-bleed hero background, served from R2.
+    heroBg: "https://pub-fcdacb1cbeae45269efc0e8804f4c72b.r2.dev/methynix-website%20(new)/hero-background.jpg",
     signature: "https://pub-fcdacb1cbeae45269efc0e8804f4c72b.r2.dev/methynix/signature.png",
     kaspaLogo: "https://pub-fcdacb1cbeae45269efc0e8804f4c72b.r2.dev/methynix/KASPAAA.jpeg",
   },
