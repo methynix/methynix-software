@@ -66,7 +66,7 @@ const proposalData = (brandKey, project) => {
           { component: "Admin Panel", cost: "", note: "" },
           { component: "Testing, Security & Deployment", cost: "", note: "" },
         ],
-    depositPercent: 40,
+    depositPercent: project?.deposit_percent || 40,
     recurring: recurring.length
       ? recurring
       : [
@@ -122,7 +122,7 @@ const agreementData = (brandKey, project, proposal) => {
     phases: (pd.timeline || []).map((t) => t.phase && phaseName(t.phase)).filter(Boolean),
     durationText: pd.timelineTotal ? `approximately ${pd.timelineTotal}` : days ? `approximately ${days} working days` : "",
     totalFee: String(proposalTotal(pd) || project?.quote || ""),
-    depositPercent: pd.depositPercent || 40,
+    depositPercent: pd.depositPercent || project?.deposit_percent || 40,
     recurringEstimate: pd.recurringTotal || "",
     warrantyMonths: 3,
     cureDays: 14,

@@ -29,6 +29,7 @@ const Finance = named(() => import("./pages/admin/Finance"), "Finance");
 const Projects = named(() => import("./pages/admin/Projects"), "Projects");
 const Infrastructure = named(() => import("./pages/admin/Infrastructure"), "Infrastructure");
 const Documents = named(() => import("./pages/admin/Documents"), "Documents");
+const Settings = named(() => import("./pages/admin/Settings"), "Settings");
 const Gallery = named(() => import("./pages/admin/Gallery"), "Gallery");
 const Notes = named(() => import("./pages/admin/Notes"), "Notes");
 const Website = named(() => import("./pages/admin/Website"), "Website");
@@ -118,6 +119,7 @@ const Shell = () => {
           <Route path="projects" element={<Projects />} />
           <Route path="infrastructure" element={<Infrastructure />} />
           <Route path="documents" element={<Documents />} />
+          <Route path="settings" element={<Settings />} />
           <Route path="gallery" element={<Gallery />} />
           <Route path="notes" element={<Notes />} />
           <Route path="website" element={<Website />} />

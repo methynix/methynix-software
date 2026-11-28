@@ -65,6 +65,8 @@ router.delete("/projects/:id", projectController.remove);
 
 router.post("/upload", uploadController.uploadImage);
 
+router.get("/settings/finance", settingsController.getFinance);
+router.patch("/settings/finance", settingsController.setFinance);
 router.patch("/site", settingsController.setMaintenance);
 
 router.get("/documents", documentController.list);

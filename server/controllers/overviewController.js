@@ -5,7 +5,7 @@ const Infrastructure = require("../models/infrastructureModel");
 const Payment = require("../models/paymentModel");
 const Reminder = require("../models/reminderModel");
 const reminders = require("../services/reminderService");
-const { SPLIT, DEPOSIT_RATE } = require("../config/finance");
+const Settings = require("../models/settingsModel");
 const AppError = require("../utils/appError");
 const catchAsync = require("../utils/catchAsync");
 
@@ -16,12 +16,13 @@ const sumBy = (rows, fn) => rows.reduce((s, r) => s + (fn(r) || 0), 0);
 
 // Everything the dashboard home needs in one request.
 exports.overview = catchAsync(async (req, res) => {
-  const [projects, studio, infra, payments, customReminders] = await Promise.all([
+  const [projects, studio, infra, payments, customReminders, fin] = await Promise.all([
     ClientProject.all(),
     StudioProject.all(),
     Infrastructure.all(),
     Payment.all(),
     Reminder.model.find({ status: "pending" }).lean(),
+    Settings.getFinance(),
   ]);
 
   const dev = payments.filter((p) => p.kind === "development");
@@ -58,7 +59,7 @@ exports.overview = catchAsync(async (req, res) => {
 
   const upcoming = [
     ...projects
-      .filter((p) => !ClientProject.CLOSED.includes(p.status) && within(p.deadline, 30))
+      .filter((p) => !p.legacy && !ClientProject.CLOSED.includes(p.status) && !["delivered", "maintenance"].includes(p.status) && within(p.deadline, 30))
       .map((p) => ({ kind: "client", id: p.id, title: p.name, subtitle: p.client.name, date: p.deadline, status: p.status })),
     ...projects
       .filter((p) => p.status === "maintenance" && !p.legacy && within(p.maintenance_deadline, 30))
@@ -77,8 +78,10 @@ exports.overview = catchAsync(async (req, res) => {
   res.status(200).json({
     status: "success",
     data: {
-      split: SPLIT,
-      deposit_rate: DEPOSIT_RATE,
+      split: fin.split,
+      deposit_rate: fin.deposit_rate,
+      bank_balance: fin.bank_balance,
+      bank_balance_updated_at: fin.bank_balance_updated_at,
       totals: {
         revenue: sumBy(dev, (p) => p.amount),
         savings: sumBy(dev, (p) => p.allocation.savings),

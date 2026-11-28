@@ -103,7 +103,7 @@ export const Projects = () => {
                 </div>
                 {p.description ? <p className="text-sm text-dim mt-2 line-clamp-3 whitespace-pre-wrap">{p.description}</p> : null}
                 <div className="flex items-center justify-between mt-4 text-xs">
-                  {p.deadline ? <span className={dueTone(p.deadline)}>Due {fmtDate(p.deadline)} · {dueLabel(p.deadline)}</span> : <span className="text-faint">No deadline</span>}
+                  {p.deadline && p.status !== "done" ? <span className={dueTone(p.deadline)}>Due {fmtDate(p.deadline)} · {dueLabel(p.deadline)}</span> : <span className="text-faint">{p.status === "done" || ["completed", "delivered"].includes(p.clientStatus) ? "Finished" : "No deadline"}</span>}
                   {p.url ? <a href={p.url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="text-accent">Open ↗</a> : null}
                 </div>
               </>

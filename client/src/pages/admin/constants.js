@@ -58,7 +58,7 @@ export const FILE_CATEGORIES = [
 // The deadline worth showing for a project, or null. Finished and past work
 // has nothing left to be "overdue"; maintenance projects track their own date.
 export const trackedDeadline = (p) => {
-  if (!p || p.legacy || ["completed", "lost"].includes(p.status)) return null;
+  if (!p || p.legacy || ["completed", "lost", "delivered"].includes(p.status)) return null;
   if (p.status === "maintenance") return p.maintenance_deadline ? { date: p.maintenance_deadline, label: "Maintenance until" } : null;
   return p.deadline ? { date: p.deadline, label: "Deadline" } : null;
 };

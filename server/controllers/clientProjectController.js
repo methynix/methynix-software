@@ -4,6 +4,8 @@ const Payment = require("../models/paymentModel");
 const Counter = require("../models/counterModel");
 const storage = require("../services/storageService");
 const mail = require("../services/mailService");
+const Settings = require("../models/settingsModel");
+const rules = require("../services/projectRules");
 const AppError = require("../utils/appError");
 const catchAsync = require("../utils/catchAsync");
 
@@ -26,6 +28,20 @@ const devPaidByProject = async () => {
     map[p.project_id] = (map[p.project_id] || 0) + p.amount;
   });
   return map;
+};
+
+// Documents are versioned per category: the next file of a category is v2, v3...
+const VERSIONED = ["proposal", "contract", "technical_doc"];
+const nextVersion = (project, category) =>
+  VERSIONED.includes(category) ? project.files.filter((f) => f.category === category).length + 1 : null;
+
+const readinessOf = async (project) => rules.readiness(project, await Payment.all({ project_id: project.id }));
+
+// Once the signed contract and the deposit are both in, the project is Deposit paid.
+const settleStage = async (project) => {
+  const r = await readinessOf(project);
+  if (project.status === "signed" && r.deposit_paid) return advance(project, "deposit_paid");
+  return project;
 };
 
 const decodeBase64 = (value = "") => Buffer.from(String(value).replace(/^data:[^;]+;base64,/, ""), "base64");
@@ -67,8 +83,9 @@ exports.getOne = catchAsync(async (req, res, next) => {
   const paid = payments.filter((p) => p.kind === "development").reduce((s, p) => s + p.amount, 0);
   res.status(200).json({
     status: "success",
-    data: { ...project, paid, payments, documents },
+    data: { ...project, paid, payments, documents, readiness: rules.readiness(project, payments) },
     storage: storage.isConfigured(),
+    finance: await Settings.getFinance(),
   });
 });
 
@@ -88,7 +105,8 @@ exports.create = catchAsync(async (req, res, next) => {
   const ref_no = req.body.ref_no || (await Counter.next("project"));
   // Past clients are filed as completed straight away, with no payments and no emails.
   const input = legacy ? { ...req.body, ref_no, status: "completed" } : { ...req.body, ref_no };
-  const project = await ClientProject.create(input, folder);
+  const fin = await Settings.getFinance();
+  const project = await ClientProject.create({ ...input, deposit_percent: input.deposit_percent ?? fin.deposit_percent }, folder);
 
   // Make the folder visible in the R2 dashboard straight away. Not fatal: it
   // appears anyway with the first upload.
@@ -102,6 +120,10 @@ exports.create = catchAsync(async (req, res, next) => {
 exports.update = catchAsync(async (req, res, next) => {
   const before = await loadProject(req.params.id, next);
   if (!before) return;
+  if (req.body.status && req.body.status !== before.status) {
+    const blocked = rules.stageBlocker({ ...before, quote: req.body.quote ?? before.quote }, req.body.status, await readinessOf(before));
+    if (blocked) return next(new AppError(blocked, 400));
+  }
   const project = await ClientProject.update(req.params.id, req.body);
 
   // The client hears from us automatically when their project is completed.
@@ -150,6 +172,8 @@ exports.deliver = catchAsync(async (req, res, next) => {
   if (email && !email.to) return next(new AppError("Add the client's email address first.", 400));
 
   const flow = DOC_FLOW[doc.type] || { category: "other", projectStatus: null };
+  const blocked = rules.docBlocker(flow.category, await readinessOf(project));
+  if (blocked) return next(new AppError(blocked, 400));
   const body = decodeBase64(pdf);
   const name = filename || `${doc.type}-${doc.number}.pdf`;
 
@@ -161,6 +185,8 @@ exports.deliver = catchAsync(async (req, res, next) => {
       category: flow.category,
       size: body.length,
       content_type: "application/pdf",
+      version: nextVersion(project, flow.category),
+      source: "generated",
     });
   } else if (!email) {
     return next(new AppError("Cloudflare R2 is not configured yet, so the file cannot be stored.", 400));
@@ -192,15 +218,22 @@ exports.uploadFile = catchAsync(async (req, res, next) => {
 
   const { filename, content_type, data, category } = req.body;
   if (!filename || !data) return next(new AppError("Choose a file to upload.", 400));
-  const cat = ClientProject.FILE_CATEGORIES.includes(category) ? category : "other";
+  if (!ClientProject.FILE_CATEGORIES.includes(category)) return next(new AppError("Choose what kind of document this is.", 400));
+  const cat = category;
+  const blocked = rules.docBlocker(cat, await readinessOf(project));
+  if (blocked) return next(new AppError(blocked, 400));
   const body = decodeBase64(data);
 
   const key = await storage.upload({ folder: project.storage_folder, filename, body, contentType: content_type });
-  project = await ClientProject.addFile(project.id, { key, name: filename, category: cat, size: body.length, content_type: content_type || "" });
+  project = await ClientProject.addFile(project.id, {
+    key, name: filename, category: cat, size: body.length, content_type: content_type || "",
+    version: nextVersion(project, cat), source: "uploaded",
+  });
 
   if (cat === "signed_contract") {
     if (project.contract_doc_id) await DocumentModel.update(project.contract_doc_id, { status: "signed" });
     project = await advance(project, "signed");
+    project = await settleStage(project);
   }
 
   res.status(201).json({ status: "success", data: project });
@@ -250,14 +283,25 @@ exports.linkFiles = catchAsync(async (req, res, next) => {
     if (!key || project.files.some((f) => f.key === key)) continue;
     const meta = await storage.head(key);
     if (!meta) return next(new AppError(`${key} was not found in R2.`, 404));
-    const cat = ClientProject.FILE_CATEGORIES.includes(item.category) ? item.category : "other";
+    if (!ClientProject.FILE_CATEGORIES.includes(item.category)) {
+      return next(new AppError(`Choose what kind of document ${key.split("/").pop()} is.`, 400));
+    }
+    const cat = item.category;
+    const blocked = rules.docBlocker(cat, await readinessOf(project));
+    if (blocked) return next(new AppError(blocked, 400));
     project = await ClientProject.addFile(project.id, {
       key,
       name: item.name || key.split("/").pop().replace(/^\d{10,}-/, ""),
       category: cat,
       size: meta.size,
       content_type: meta.contentType,
+      version: nextVersion(project, cat),
+      source: "linked",
     });
+    if (cat === "signed_contract") {
+      project = await advance(project, "signed");
+      project = await settleStage(project);
+    }
   }
   res.status(200).json({ status: "success", data: project });
 });
@@ -282,3 +326,4 @@ exports.emailClient = catchAsync(async (req, res, next) => {
 });
 
 exports.advance = advance;
+exports.settleStage = settleStage;

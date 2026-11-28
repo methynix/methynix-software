@@ -30,7 +30,7 @@ export const remindersApi = {
 
 export const clientsApi = {
   ...crud("clients"),
-  get: (id) => apiClient.get(`/admin/clients/${id}`).then((r) => ({ ...r.data.data, storageReady: r.data.storage })),
+  get: (id) => apiClient.get(`/admin/clients/${id}`).then((r) => ({ ...r.data.data, storageReady: r.data.storage, finance: r.data.finance })),
   // Returns { data, emailed, emailError } so the UI can report the completion email.
   update: (id, body) => apiClient.patch(`/admin/clients/${id}`, body).then((r) => r.data),
   deliver: (id, body) => apiClient.post(`/admin/clients/${id}/deliver`, body, SLOW).then((r) => r.data),
@@ -52,7 +52,16 @@ export const galleryApi = {
   remove: (id) => apiClient.delete(`/admin/gallery/${id}`),
 };
 
-export const paymentsApi = crud("payments");
+export const paymentsApi = {
+  ...crud("payments"),
+  // Resolves to the payment, with the server's `note` (if any) attached.
+  create: (body) => apiClient.post("/admin/payments", body).then((r) => Object.assign(r.data.data, { note: r.data.note || "" })),
+};
+
+export const settingsApi = {
+  getFinance: () => apiClient.get("/admin/settings/finance").then(data),
+  setFinance: (body) => apiClient.patch("/admin/settings/finance", body).then(data),
+};
 export const infrastructureApi = crud("infrastructure");
 export const studioApi = crud("studio-projects");
 export const notesApi = crud("notes");

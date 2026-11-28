@@ -15,13 +15,21 @@ const DocumentEditor = lazy(() => import("../../features/documents/DocumentEdito
 const loadRender = () => import("../../features/documents/pdf/render");
 
 const FLOW = STAGES.filter((s) => !["on_hold", "lost", "maintenance"].includes(s.key));
-const DEPOSIT_RATE = 0.4;
 const MAX_UPLOAD = 25 * 1024 * 1024;
 
+// Proposal -> contract -> technical document. A document can be generated here,
+// uploaded from the computer, or linked from R2; any of them counts as "added".
 const DOCS = [
-  { type: "proposal", label: "Proposal", field: "proposal_doc_id", needs: null },
-  { type: "contract", label: "Contract (agreement)", field: "contract_doc_id", needs: "proposal" },
-  { type: "technical", label: "Technical document", field: "technical_doc_id", needs: "proposal" },
+  { type: "proposal", label: "Proposal", field: "proposal_doc_id", category: "proposal", needs: null },
+  { type: "contract", label: "Contract (agreement)", field: "contract_doc_id", category: "contract", needs: "proposal" },
+  { type: "technical", label: "Technical document", field: "technical_doc_id", category: "technical_doc", needs: "contract" },
+];
+const NEEDS_TEXT = { proposal: "Needs the proposal first", contract: "Needs the contract first" };
+const STAGE_OPTIONS = (pct) => [
+  { value: "deposit", label: `${pct}% deposit (upfront)` },
+  { value: "balance", label: "Remaining balance" },
+  { value: "full", label: "Full price, paid at once" },
+  { value: "installment", label: "Other instalment" },
 ];
 
 const Stepper = ({ status }) => {
@@ -38,7 +46,7 @@ const Stepper = ({ status }) => {
   );
 };
 
-const emptyPayment = (amount = "") => ({ amount, kind: "development", date: toInputDate(new Date()), method: "Mobile money", reference: "", note: "" });
+const emptyPayment = (stage = "deposit", amount = "") => ({ stage, amount, price: "", kind: "development", date: toInputDate(new Date()), method: "Mobile money", reference: "", note: "" });
 
 export const ClientDetail = () => {
   const { id } = useParams();
@@ -50,7 +58,7 @@ export const ClientDetail = () => {
   const [payment, setPayment] = useState(null);
   const [upload, setUpload] = useState(null);
   const [maint, setMaint] = useState(null); // { date }
-  const [link, setLink] = useState(null); // { items, picked, prefix }
+  const [link, setLink] = useState(null); // { items, picked: { key: { category } }, prefix, preset }
   const [mail, setMail] = useState(null); // { to, subject, message, ids }
   const [busy, setBusy] = useState("");
   const editorRef = useRef(null);
@@ -66,8 +74,14 @@ export const ClientDetail = () => {
   if (!project) return <SkeletonClientDetail />;
 
   const s = stage(project.status);
-  const deposit = Math.round(project.quote * DEPOSIT_RATE);
-  const balance = Math.max(project.quote - project.paid, 0);
+  const R = project.readiness;
+  const pctDep = project.deposit_percent || 40;
+  const split = project.finance?.split || { savings: 0.5, mastercard: 0.1, expenses: 0.4 };
+  const deposit = R.deposit_due;
+  const balance = R.balance;
+  const pct = (k) => `${Math.round(split[k] * 100)}%`;
+  // Amount that fits each payment type, so recording one is a single click.
+  const suggest = (stage) => String(stage === "deposit" ? R.deposit_remaining || deposit || "" : stage === "installment" ? "" : balance || project.quote || "");
   const devPayments = project.payments.filter((p) => p.kind === "development");
   const docById = (docId) => project.documents.find((d) => d.id === docId);
   const proposal = docById(project.proposal_doc_id);
@@ -97,8 +111,9 @@ export const ClientDetail = () => {
   };
 
   const generate = (type, brand) => {
-    if (type !== "proposal" && !proposal) {
-      showToast("Create the proposal first; the contract and technical document are built from it.", "error");
+    const need = DOCS.find((d) => d.type === type)?.needs;
+    if (need && !R.has[need]) {
+      showToast(`${NEEDS_TEXT[need]}.`, "error");
       return;
     }
     openEditor(defaultWorking(type, { brand, project, proposal }));
@@ -140,13 +155,19 @@ export const ClientDetail = () => {
     navigate("/admin/dashboard/clients");
   };
 
+  const openPayment = (stage = "deposit") => setPayment({ ...emptyPayment(stage, suggest(stage)), note: stage === "deposit" ? `${pctDep}% upfront deposit` : stage === "balance" ? "Remaining balance" : "" });
+
   const recordPayment = async () => {
     setBusy("payment");
     try {
-      const saved = await paymentsApi.create({ ...payment, project_id: project.id, amount: Number(String(payment.amount).replace(/[,\s]/g, "")) });
+      const amount = Number(String(payment.amount).replace(/[,\s]/g, ""));
+      // Everything else (deposit, balance, completion) is worked out from the price.
+      const price = Number(String(payment.price || "").replace(/[,\s]/g, ""));
+      if (!project.quote && price > 0) await clientsApi.update(project.id, { quote: price });
+      const saved = await paymentsApi.create({ ...payment, project_id: project.id, amount });
       setPayment(null);
       await load();
-      showToast(saved.kind === "development" ? "Payment recorded and split into savings, Mastercard and expenses." : "Pass-through payment recorded.");
+      showToast(saved.note || (saved.kind === "development" ? `Payment recorded and split ${pct("savings")} / ${pct("mastercard")} / ${pct("expenses")}.` : "Pass-through payment recorded."));
     } catch (e) {
       showToast(e.message, "error");
     } finally {
@@ -167,7 +188,7 @@ export const ClientDetail = () => {
     w.data = {
       ...w.data,
       date: toInputDate(p.date),
-      paymentFor: `${project.name} — ${p.is_deposit ? `${DEPOSIT_RATE * 100}% upfront deposit` : p.kind === "production" ? "production costs" : "development payment"}`,
+      paymentFor: `${project.name} — ${p.stage === "deposit" || p.is_deposit ? `${pctDep}% upfront deposit` : p.stage === "full" ? "full payment" : p.stage === "balance" ? "remaining balance" : p.kind === "production" ? "production costs" : "development payment"}`,
       totalAmount: String(project.quote || p.amount),
       amountPaid: String(p.amount),
       balanceDue: String(Math.max((project.quote || p.amount) - paidBefore - p.amount, 0)),
@@ -200,6 +221,7 @@ export const ClientDetail = () => {
   };
 
   const doUpload = async () => {
+    if (!upload.category) return showToast("Choose what kind of document this is.", "error");
     if (!upload.file) return showToast("Choose a file.", "error");
     if (upload.file.size > MAX_UPLOAD) return showToast("Files must be under 25 MB.", "error");
     setBusy("upload");
@@ -232,8 +254,8 @@ export const ClientDetail = () => {
     }
   };
 
-  const openLink = async (prefix) => {
-    setLink({ items: null, picked: {}, prefix: prefix ?? `${project.storage_folder}/` });
+  const openLink = async (prefix, preset = "") => {
+    setLink({ items: null, picked: {}, prefix: prefix ?? `${project.storage_folder}/`, preset });
     try {
       const items = await clientsApi.r2Files(project.id, prefix);
       setLink((l) => ({ ...l, items }));
@@ -244,8 +266,9 @@ export const ClientDetail = () => {
   };
 
   const doLink = async () => {
-    const files = Object.entries(link.picked).filter(([, v]) => v).map(([key, category]) => ({ key, category }));
+    const files = Object.entries(link.picked).filter(([, v]) => v).map(([key, v]) => ({ key, category: v.category }));
     if (!files.length) return showToast("Tick at least one file.", "error");
+    if (files.some((f) => !f.category)) return showToast("Choose what kind of document each file is.", "error");
     setBusy("link");
     try {
       await clientsApi.linkFiles(project.id, files);
@@ -296,29 +319,41 @@ export const ClientDetail = () => {
     contacted: (
       <>
         <Button variant="ghost" onClick={() => setStatus("discovery")}>Move to discovery</Button>
-        {!proposal ? generateButtons("proposal") : null}
+        {!R.has.proposal ? generateButtons("proposal") : null}
       </>
     ),
-    discovery: proposal ? <Button onClick={() => openEditor(proposal, proposal.id)}>Open proposal to send</Button> : generateButtons("proposal"),
+    discovery: proposal ? (
+      <Button onClick={() => openEditor(proposal, proposal.id)}>Open proposal to send</Button>
+    ) : R.has.proposal ? (
+      <Button onClick={() => setStatus("proposal_sent")}>Mark proposal sent</Button>
+    ) : (
+      generateButtons("proposal")
+    ),
     proposal_sent: (
       <>
         <Button onClick={() => setStatus("accepted")}>Client accepted</Button>
         <Button variant="danger" onClick={() => setStatus("lost")}>Lost</Button>
       </>
     ),
-    accepted: project.contract_doc_id ? <Button onClick={() => openEditor(docById(project.contract_doc_id), project.contract_doc_id)}>Open contract to send</Button> : generateButtons("contract"),
+    accepted: project.contract_doc_id ? (
+      <Button onClick={() => openEditor(docById(project.contract_doc_id), project.contract_doc_id)}>Open contract to send</Button>
+    ) : R.has.contract ? (
+      <Button onClick={() => setStatus("contract_sent")}>Mark contract sent</Button>
+    ) : (
+      generateButtons("contract")
+    ),
     contract_sent: <Button onClick={() => setUpload({ file: null, category: "signed_contract" })}>Upload signed contract</Button>,
-    signed: <Button onClick={() => setPayment({ ...emptyPayment(String(deposit || "")), note: "40% upfront deposit" })}>Record {DEPOSIT_RATE * 100}% deposit{deposit ? ` (${money(deposit)})` : ""}</Button>,
+    signed: <Button onClick={() => openPayment("deposit")}>Record {pctDep}% deposit{R.deposit_remaining ? ` (${money(R.deposit_remaining)})` : ""}</Button>,
     deposit_paid: (
       <>
-        {!project.technical_doc_id ? generateButtons("technical") : null}
+        {!R.has.technical && R.has.contract ? generateButtons("technical") : null}
         <Button onClick={() => setStatus("in_progress")}>Start the work</Button>
       </>
     ),
     in_progress: <Button onClick={() => setStatus("delivered")}>Mark delivered</Button>,
     delivered: (
       <>
-        {balance ? <Button variant="ghost" onClick={() => setPayment({ ...emptyPayment(String(balance)), note: "Final balance" })}>Record balance ({money(balance)})</Button> : null}
+        {balance ? <Button variant="ghost" onClick={() => openPayment("balance")}>Record balance ({money(balance)})</Button> : null}
         <Button onClick={() => setStatus("completed")}>Mark completed & email client</Button>
       </>
     ),
@@ -409,31 +444,54 @@ export const ClientDetail = () => {
             <ul className="divide-y divide-line">
               {DOCS.map((meta) => {
                 const d = docById(project[meta.field]);
+                const versions = project.files.filter((f) => f.category === meta.category).sort((x, y) => (y.version || 0) - (x.version || 0));
+                const latest = versions[0];
+                const blocked = meta.needs && !R.has[meta.needs];
                 return (
                   <li key={meta.type} className="px-5 py-4 flex flex-wrap items-center gap-3">
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium">{meta.label}</p>
+                      <p className="text-sm font-medium">
+                        {meta.label} {R.has[meta.type] ? <Pill tone="accent">added</Pill> : null}
+                      </p>
                       <p className="text-xs text-faint mt-0.5">
-                        {d ? `${d.data?.reference || d.number} · ${getBrand(d.data?.brand).label} · ${d.status}` : meta.needs && !proposal ? "Needs the proposal first" : "Not created yet"}
+                        {d
+                          ? `${d.data?.reference || d.number} · ${getBrand(d.data?.brand).label} · ${d.status}${versions.length ? ` · ${versions.length} saved version${versions.length === 1 ? "" : "s"}` : ""}`
+                          : latest
+                            ? `${latest.source === "linked" ? "Linked from R2" : "Uploaded"} · v${latest.version} · ${latest.name}`
+                            : blocked
+                              ? NEEDS_TEXT[meta.needs]
+                              : "Not added yet"}
                       </p>
                     </div>
-                    {d ? (
-                      <div className="flex gap-2">
-                        <Button variant="ghost" className="!py-1.5 text-xs" onClick={() => openEditor(d, d.id)}>Open</Button>
-                        <Button variant="ghost" className="!py-1.5 text-xs" onClick={() => loadRender().then((m) => m.downloadPdf(d)).catch((e) => showToast(e.message, "error"))}>PDF</Button>
-                      </div>
-                    ) : meta.needs && !proposal ? null : (
-                      generateButtons(meta.type)
-                    )}
+                    <div className="flex flex-wrap gap-2">
+                      {d ? (
+                        <>
+                          <Button variant="ghost" className="!py-1.5 text-xs" onClick={() => openEditor(d, d.id)}>Open</Button>
+                          <Button variant="ghost" className="!py-1.5 text-xs" onClick={() => loadRender().then((m) => m.downloadPdf(d)).catch((e) => showToast(e.message, "error"))}>PDF</Button>
+                        </>
+                      ) : latest ? (
+                        <Button variant="ghost" className="!py-1.5 text-xs" onClick={() => openFile(latest)}>Open file</Button>
+                      ) : null}
+                      {blocked ? null : (
+                        <>
+                          {d ? null : generateButtons(meta.type)}
+                          <Button variant="ghost" className="!py-1.5 text-xs" onClick={() => setUpload({ file: null, category: meta.category })}>Upload</Button>
+                          <Button variant="ghost" className="!py-1.5 text-xs" onClick={() => openLink(undefined, meta.category)}>Link from R2</Button>
+                        </>
+                      )}
+                    </div>
                   </li>
                 );
               })}
             </ul>
+            <p className="px-5 py-3 text-xs text-faint border-t border-line">
+              Each saved, uploaded or linked file becomes the next version (v1, v2…). The contract needs a proposal, and the technical document needs a contract. Anything else can be uploaded as "Other" at any time.
+            </p>
           </Card>
 
           <Card
             title="Files in R2"
-            actions={<div className="flex gap-2"><Button variant="ghost" className="!py-1.5 text-xs" onClick={() => openLink()}>Link from R2</Button><Button variant="ghost" className="!py-1.5 text-xs" onClick={() => setUpload({ file: null, category: "technical_doc" })}>Upload file</Button></div>}
+            actions={<div className="flex gap-2"><Button variant="ghost" className="!py-1.5 text-xs" onClick={() => openLink()}>Link from R2</Button><Button variant="ghost" className="!py-1.5 text-xs" onClick={() => setUpload({ file: null, category: "" })}>Upload file</Button></div>}
             padded={false}
           >
             {!project.storageReady ? (
@@ -448,7 +506,9 @@ export const ClientDetail = () => {
                     <div className="min-w-0 flex-1">
                       <p className="text-sm truncate">{f.name}</p>
                       <p className="text-xs text-faint">
-                        {FILE_CATEGORIES.find((c) => c.value === f.category)?.label || f.category} · {(f.size / 1024).toFixed(0)} KB · {fmtDate(f.uploaded_at)}
+                        {FILE_CATEGORIES.find((c) => c.value === f.category)?.label || f.category}
+                        {f.version ? ` · v${f.version}${f.version === Math.max(...project.files.filter((x) => x.category === f.category).map((x) => x.version || 0)) ? " (latest)" : ""}` : ""}
+                        {` · ${f.source === "generated" ? "generated" : f.source === "linked" ? "linked" : "uploaded"} · ${(f.size / 1024).toFixed(0)} KB · ${fmtDate(f.uploaded_at)}`}
                       </p>
                     </div>
                     <button onClick={() => openFile(f)} className="text-xs text-accent">Open</button>
@@ -461,7 +521,7 @@ export const ClientDetail = () => {
 
           <Card
             title="Payments"
-            actions={<Button variant="ghost" className="!py-1.5 text-xs" onClick={() => setPayment(emptyPayment(devPayments.length ? String(balance || "") : String(deposit || "")))}>Record payment</Button>}
+            actions={<Button variant="ghost" className="!py-1.5 text-xs" onClick={() => openPayment(R.deposit_paid ? "balance" : "deposit")}>Record payment</Button>}
             padded={false}
           >
             {project.payments.length === 0 ? (
@@ -472,7 +532,7 @@ export const ClientDetail = () => {
                   <li key={p.id} className="px-5 py-3 flex flex-wrap items-center gap-x-3 gap-y-1">
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium tabular-nums">
-                        {money(p.amount)} {p.is_deposit ? <Pill tone="sand">deposit</Pill> : null} {p.kind === "production" ? <Pill>pass-through</Pill> : null}
+                        {money(p.amount)} {p.kind === "production" ? <Pill>pass-through</Pill> : p.stage ? <Pill tone={p.stage === "deposit" ? "sand" : "neutral"}>{p.stage === "full" ? "full payment" : p.stage === "installment" ? "instalment" : p.stage}</Pill> : null}
                       </p>
                       <p className="text-xs text-faint">
                         {fmtDate(p.date)} · {p.method || "—"}
@@ -489,17 +549,20 @@ export const ClientDetail = () => {
         </div>
 
         <div className="space-y-4">
-          {project.legacy ? null : <Card title="Money">
+          {project.legacy ? null : <Card title="Money" actions={!project.quote ? <button className="text-xs text-accent" onClick={() => setEditing({ ...project, quote: "", start_date: toInputDate(project.start_date), deadline: toInputDate(project.deadline), maintenance_deadline: toInputDate(project.maintenance_deadline) })}>Set price</button> : null}>
+            {!project.quote ? (
+              <p className="text-xs text-sand mb-3">No development price yet, so the deposit and balance cannot be worked out. Saving the proposal or contract sets it, or use Set price.</p>
+            ) : null}
             <dl className="space-y-2.5 text-sm">
               {[
-                ["Development price", money(project.quote)],
-                [`Deposit due (${DEPOSIT_RATE * 100}%)`, money(deposit)],
+                ["Development price", project.quote ? money(project.quote) : "Not set"],
+                [`Deposit (${pctDep}%)`, project.quote ? `${money(deposit)}${R.deposit_paid ? " ✓ paid" : R.paid ? ` · ${money(R.deposit_remaining)} to go` : ""}` : "—"],
                 ["Paid so far", money(project.paid)],
-                ["Balance", money(balance)],
+                ["Balance", project.quote ? money(balance) : "—"],
               ].map(([k, v]) => (
                 <div key={k} className="flex justify-between gap-3">
                   <dt className="text-dim">{k}</dt>
-                  <dd className="tabular-nums">{v}</dd>
+                  <dd className="tabular-nums text-right">{v}</dd>
                 </div>
               ))}
             </dl>
@@ -569,10 +632,21 @@ export const ClientDetail = () => {
               value={payment.kind}
               onChange={(e) => setPayment({ ...payment, kind: e.target.value })}
               options={[
-                { value: "development", label: "Development (Methynix revenue — gets split 50/10/40)" },
+                { value: "development", label: `Development (Methynix revenue, split ${pct("savings")} / ${pct("mastercard")} / ${pct("expenses")})` },
                 { value: "production", label: "Production costs (pass-through to providers, not revenue)" },
               ]}
             />
+            {payment.kind === "development" ? (
+              <Select
+                label="Payment type"
+                value={payment.stage}
+                onChange={(e) => setPayment({ ...payment, stage: e.target.value, amount: suggest(e.target.value) || payment.amount })}
+                options={STAGE_OPTIONS(pctDep)}
+              />
+            ) : null}
+            {payment.kind === "development" && !project.quote ? (
+              <Field label="Agreed development price (TZS)" inputMode="numeric" value={payment.price} onChange={(e) => setPayment({ ...payment, price: e.target.value })} hint="Not set on this project yet. Entering it here saves it, so the deposit and balance are worked out correctly." />
+            ) : null}
             <div className="grid grid-cols-2 gap-3">
               <Field label="Amount (TZS)" inputMode="numeric" value={payment.amount} onChange={(e) => setPayment({ ...payment, amount: e.target.value })} />
               <Field label="Date" type="date" value={payment.date} onChange={(e) => setPayment({ ...payment, date: e.target.value })} />
@@ -582,7 +656,7 @@ export const ClientDetail = () => {
             <Field label="Note" value={payment.note} onChange={(e) => setPayment({ ...payment, note: e.target.value })} />
             {payment.kind === "development" && Number(payment.amount) ? (
               <p className="text-xs text-faint">
-                Split: savings {money(Number(payment.amount) * 0.5)} · mastercard {money(Number(payment.amount) * 0.1)} · expenses {money(Number(payment.amount) * 0.4)}
+                Split: savings {money(Number(payment.amount) * split.savings)} · mastercard {money(Number(payment.amount) * split.mastercard)} · expenses {money(Number(payment.amount) * split.expenses)}
               </p>
             ) : null}
           </div>
@@ -597,7 +671,7 @@ export const ClientDetail = () => {
       >
         {upload ? (
           <div className="space-y-3">
-            <Select label="Kind of file" value={upload.category} onChange={(e) => setUpload({ ...upload, category: e.target.value })} options={FILE_CATEGORIES} />
+            <Select label="What kind of document is it?" value={upload.category} onChange={(e) => setUpload({ ...upload, category: e.target.value })} options={[{ value: "", label: "Choose…" }, ...FILE_CATEGORIES]} />
             <input type="file" onChange={(e) => setUpload({ ...upload, file: e.target.files?.[0] || null })} className="block w-full text-sm text-dim file:mr-3 file:px-3 file:py-2 file:rounded-lg file:border-0 file:bg-raised file:text-text" />
             <p className="text-xs text-faint">
               Saved in <span className="font-mono">{project.storage_folder}/</span>. Uploading a signed contract moves the project to Signed.
@@ -630,7 +704,7 @@ export const ClientDetail = () => {
           <div className="space-y-3">
             <div className="flex gap-2">
               <input value={link.prefix} onChange={(e) => setLink({ ...link, prefix: e.target.value })} className="flex-1 bg-surface border border-line px-3 py-2 rounded-lg text-sm outline-none focus:border-accent font-mono" aria-label="R2 folder" />
-              <Button variant="ghost" onClick={() => openLink(link.prefix)}>Browse</Button>
+              <Button variant="ghost" onClick={() => openLink(link.prefix, link.preset)}>Browse</Button>
             </div>
             {!link.items ? <p className="text-sm text-dim">Loading…</p> : link.items.length === 0 ? (
               <p className="text-sm text-dim">No unlinked files under this folder. Type another folder above to look elsewhere in the bucket.</p>
@@ -638,13 +712,14 @@ export const ClientDetail = () => {
               <ul className="divide-y divide-line max-h-72 overflow-y-auto rounded-lg border border-line">
                 {link.items.map((o) => (
                   <li key={o.key} className="px-3 py-2 flex items-center gap-3">
-                    <input type="checkbox" checked={Boolean(link.picked[o.key])} onChange={(e) => setLink({ ...link, picked: { ...link.picked, [o.key]: e.target.checked ? link.picked[o.key] || "other" : false } })} />
+                    <input type="checkbox" checked={Boolean(link.picked[o.key])} onChange={(e) => setLink({ ...link, picked: { ...link.picked, [o.key]: e.target.checked ? { category: link.preset || "" } : false } })} />
                     <div className="min-w-0 flex-1">
                       <p className="text-sm truncate">{o.key.split("/").pop()}</p>
                       <p className="text-[11px] text-faint truncate">{o.key} · {(o.size / 1024).toFixed(0)} KB</p>
                     </div>
                     {link.picked[o.key] ? (
-                      <select value={link.picked[o.key]} onChange={(e) => setLink({ ...link, picked: { ...link.picked, [o.key]: e.target.value } })} className="bg-surface border border-line rounded-lg px-2 py-1 text-xs">
+                      <select value={link.picked[o.key].category} onChange={(e) => setLink({ ...link, picked: { ...link.picked, [o.key]: { category: e.target.value } } })} className={`bg-surface border rounded-lg px-2 py-1 text-xs ${link.picked[o.key].category ? "border-line" : "border-sand"}`}>
+                        <option value="">Type…</option>
                         {FILE_CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
                       </select>
                     ) : null}
@@ -652,7 +727,7 @@ export const ClientDetail = () => {
                 ))}
               </ul>
             )}
-            <p className="text-xs text-faint">Links the existing R2 file to this project. Nothing is uploaded again.</p>
+            <p className="text-xs text-faint">Pick what each file is (proposal, contract, technical document or other). Proposal, contract and technical files count as added and become the next version. Nothing is uploaded again.</p>
           </div>
         ) : null}
       </Dialog>

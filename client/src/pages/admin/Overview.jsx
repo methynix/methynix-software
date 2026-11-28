@@ -65,6 +65,12 @@ const KIND_LINK = {
   reminder: () => "/admin/dashboard/reminders",
 };
 
+// Follows the clock of whoever opens the dashboard.
+const greeting = () => {
+  const h = new Date().getHours();
+  return h < 12 ? "morning" : h < 18 ? "afternoon" : "evening";
+};
+
 export const Overview = () => {
   const { showToast } = useUI();
   const [data, setData] = useState(null);
@@ -95,7 +101,7 @@ export const Overview = () => {
   return (
     <>
       <PageHeader
-        title="Overview"
+        title={`Good ${greeting()}, CEO`}
         subtitle={new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
         actions={
           <>
@@ -112,10 +118,11 @@ export const Overview = () => {
         <Stat label={`Savings · ${pct("savings")}`} value={money(t.savings)} tone="accent" hint="For future dreams" />
         <Stat label={`Mastercard · ${pct("mastercard")}`} value={money(t.mastercard)} hint="Online bills & subscriptions" />
         <Stat label={`Expenses · ${pct("expenses")}`} value={money(t.expenses)} hint="Running costs" />
+        <Stat label="Bank balance (set aside)" value={money(data.bank_balance)} tone="accent" hint={data.bank_balance_updated_at ? `For future plans · updated ${fmtDate(data.bank_balance_updated_at)}` : "Set it in Settings"} />
         <Stat label="Revenue this month" value={money(t.revenue_this_month)} />
         <Stat label="Outstanding from clients" value={money(t.outstanding)} tone="sand" hint="Signed work not yet paid" />
         <Stat label="Open leads" value={data.counts.open_leads} hint={t.pipeline_value ? `${money(t.pipeline_value)} quoted` : "Before signing"} />
-        <Stat label="Active client projects" value={data.counts.active_clients} hint={`${data.counts.completed} completed all-time`} />
+        <Stat label="Active client projects" value={data.counts.active_clients} hint={`${data.counts.completed} completed · ${data.counts.maintenance || 0} in maintenance`} />
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 mt-4">
@@ -176,7 +183,7 @@ export const Overview = () => {
                     <p className="text-sm font-medium truncate">{p.project_name || p.note || "Payment"}</p>
                     <p className="text-xs text-faint truncate">{p.client_name || "—"} · {fmtDate(p.date)}</p>
                   </div>
-                  {p.kind === "production" ? <Pill>pass-through</Pill> : p.is_deposit ? <Pill tone="sand">deposit</Pill> : null}
+                  {p.kind === "production" ? <Pill>pass-through</Pill> : p.stage === "deposit" || p.is_deposit ? <Pill tone="sand">deposit</Pill> : p.stage === "balance" ? <Pill>balance</Pill> : null}
                   <span className="text-sm tabular-nums">{money(p.amount)}</span>
                 </li>
               ))}

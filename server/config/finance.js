@@ -10,10 +10,11 @@ exports.SPLIT = {
 // Share of the agreed development price the client pays before work starts.
 exports.DEPOSIT_RATE = 0.4;
 
-exports.allocate = (amount) => {
+// `split` are fractions that add up to 1; defaults to the built-in ratios.
+exports.allocate = (amount, split = exports.SPLIT) => {
   const n = Number(amount) || 0;
-  const savings = Math.round(n * exports.SPLIT.savings);
-  const mastercard = Math.round(n * exports.SPLIT.mastercard);
+  const savings = Math.round(n * split.savings);
+  const mastercard = Math.round(n * split.mastercard);
   // Expenses takes the remainder so the three always add up to the payment.
   return { savings, mastercard, expenses: n - savings - mastercard };
 };

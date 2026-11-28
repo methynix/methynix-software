@@ -31,6 +31,9 @@ const fileSchema = new mongoose.Schema(
     category: { type: String, enum: FILE_CATEGORIES, default: "other" },
     size: { type: Number, default: 0 },
     content_type: { type: String, default: "" },
+    // Proposal / contract / technical documents are versioned: v1, v2, ...
+    version: { type: Number, default: null },
+    source: { type: String, enum: ["generated", "uploaded", "linked"], default: "uploaded" },
     uploaded_at: { type: Date, default: Date.now },
   },
   { _id: true }
@@ -69,6 +72,9 @@ const clientProjectSchema = new mongoose.Schema({
   // Work finished before this system existed. Kept as a record only: never
   // counted as outstanding, pipeline or revenue, and never emailed about.
   legacy: { type: Boolean, default: false },
+  // Deposit share agreed for this project, copied from Settings when it is
+  // created so changing Settings later does not alter existing projects.
+  deposit_percent: { type: Number, default: null },
   status: { type: String, enum: STATUSES, default: "lead" },
   status_history: [{ _id: false, status: String, at: { type: Date, default: Date.now } }],
   start_date: { type: Date, default: null },
@@ -108,6 +114,7 @@ const serialize = (d) => ({
   quote: d.quote || 0,
   production_costs: d.production_costs || [],
   legacy: Boolean(d.legacy),
+  deposit_percent: d.deposit_percent ?? 40,
   status: d.status,
   status_history: d.status_history || [],
   start_date: d.start_date,
@@ -125,6 +132,8 @@ const serialize = (d) => ({
     category: f.category,
     size: f.size,
     content_type: f.content_type,
+    version: f.version || null,
+    source: f.source || "uploaded",
     uploaded_at: f.uploaded_at,
   })),
   notes: d.notes || "",
@@ -136,7 +145,7 @@ const serialize = (d) => ({
 const EDITABLE = [
   "name", "ref_no", "brand", "type", "source", "description", "client", "quote", "production_costs",
   "start_date", "deadline", "notes", "proposal_doc_id", "contract_doc_id",
-  "technical_doc_id", "legacy", "maintenance_deadline",
+  "technical_doc_id", "legacy", "maintenance_deadline", "deposit_percent",
 ];
 
 exports.STATUSES = STATUSES;

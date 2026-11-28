@@ -6,7 +6,7 @@ import { SkeletonFinance } from "../../components/ui/Skeleton";
 import { PageHeader, Card, Stat, Button, Dialog, Field, Select, Pill, money, fmtDate, toInputDate } from "./ui";
 import { RevenueChart } from "./Overview";
 
-const blank = () => ({ project_id: "", kind: "development", amount: "", date: toInputDate(new Date()), method: "Mobile money", reference: "", note: "", client_name: "" });
+const blank = () => ({ project_id: "", kind: "development", stage: "", amount: "", date: toInputDate(new Date()), method: "Mobile money", reference: "", note: "", client_name: "" });
 
 export const Finance = () => {
   const { showToast } = useUI();
@@ -31,10 +31,10 @@ export const Finance = () => {
 
   const save = async () => {
     try {
-      await paymentsApi.create({ ...form, project_id: form.project_id || null, amount: Number(String(form.amount).replace(/[,\s]/g, "")) });
+      const saved = await paymentsApi.create({ ...form, project_id: form.project_id || null, amount: Number(String(form.amount).replace(/[,\s]/g, "")) });
       setForm(null);
       load();
-      showToast("Payment recorded.");
+      showToast(saved.note || "Payment recorded.");
     } catch (e) {
       showToast(e.message, "error");
     }
@@ -89,19 +89,19 @@ export const Finance = () => {
                 <tr className="text-left text-xs text-faint border-b border-line">
                   <th className="px-5 py-3 font-medium">Project</th>
                   <th className="px-5 py-3 font-medium text-right">Price</th>
-                  <th className="px-5 py-3 font-medium text-right">40% deposit</th>
+                  <th className="px-5 py-3 font-medium text-right">Deposit</th>
                   <th className="px-5 py-3 font-medium text-right">Paid</th>
                   <th className="px-5 py-3 font-medium text-right">Balance</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">
                 {billed.map((p) => {
-                  const dep = Math.round(p.quote * summary.deposit_rate);
+                  const dep = Math.round(p.quote * ((p.deposit_percent || 40) / 100));
                   return (
                     <tr key={p.id}>
                       <td className="px-5 py-3"><Link to={`/admin/dashboard/clients/${p.id}`} className="hover:text-accent">{p.name}</Link></td>
                       <td className="px-5 py-3 text-right tabular-nums">{money(p.quote)}</td>
-                      <td className={`px-5 py-3 text-right tabular-nums ${p.paid >= dep ? "text-dim" : "text-sand"}`}>{money(dep)}{p.paid >= dep ? " ✓" : ""}</td>
+                      <td className={`px-5 py-3 text-right tabular-nums ${p.paid >= dep ? "text-dim" : "text-sand"}`}>{money(dep)} <span className="text-faint text-xs">({p.deposit_percent || 40}%)</span>{p.paid >= dep ? " ✓" : ""}</td>
                       <td className="px-5 py-3 text-right tabular-nums">{money(p.paid)}</td>
                       <td className="px-5 py-3 text-right tabular-nums">{money(Math.max(p.quote - p.paid, 0))}</td>
                     </tr>
@@ -148,7 +148,7 @@ export const Finance = () => {
                     <td className="px-5 py-3">
                       <p>{p.project_name || p.client_name || p.note || "—"}</p>
                       <p className="text-xs text-faint">
-                        {p.kind === "production" ? <Pill>pass-through</Pill> : p.is_deposit ? <Pill tone="sand">deposit</Pill> : null} {p.method}
+                        {p.kind === "production" ? <Pill>pass-through</Pill> : p.stage ? <Pill tone={p.stage === "deposit" ? "sand" : "neutral"}>{p.stage === "full" ? "full payment" : p.stage === "installment" ? "instalment" : p.stage}</Pill> : null} {p.method}
                       </p>
                     </td>
                     <td className="px-5 py-3 text-right tabular-nums">{money(p.amount)}</td>
@@ -178,8 +178,22 @@ export const Finance = () => {
               label="Kind"
               value={form.kind}
               onChange={(e) => setForm({ ...form, kind: e.target.value })}
-              options={[{ value: "development", label: "Development (revenue, split 50/10/40)" }, { value: "production", label: "Production costs (pass-through)" }]}
+              options={[{ value: "development", label: `Development (revenue, split ${pct("savings")} / ${pct("mastercard")} / ${pct("expenses")})` }, { value: "production", label: "Production costs (pass-through)" }]}
             />
+            {form.kind === "development" && form.project_id ? (
+              <Select
+                label="Payment type"
+                value={form.stage}
+                onChange={(e) => setForm({ ...form, stage: e.target.value })}
+                options={[
+                  { value: "", label: "Automatic (first payment is the deposit)" },
+                  { value: "deposit", label: "Deposit (upfront)" },
+                  { value: "balance", label: "Remaining balance" },
+                  { value: "full", label: "Full price, paid at once" },
+                  { value: "installment", label: "Other instalment" },
+                ]}
+              />
+            ) : null}
             <div className="grid grid-cols-2 gap-3">
               <Field label="Amount (TZS)" inputMode="numeric" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
               <Field label="Date" type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />

@@ -75,7 +75,7 @@ const processDigests = async () => {
       Model: ClientProject.model,
       due: await collect(
         ClientProject.model,
-        { status: { $nin: [...ClientProject.CLOSED, "maintenance"] }, deadline: { $ne: null } },
+        { status: { $nin: [...ClientProject.CLOSED, "delivered", "maintenance"] }, legacy: { $ne: true }, deadline: { $ne: null } },
         "deadline",
         RULES.client,
         (d) => ({ group: "Client project", title: d.name, detail: `${d.client?.name || ""} · ${d.status.replace(/_/g, " ")}` })
