@@ -42,6 +42,16 @@ export const clientsApi = {
   removeFile: (id, fileId) => apiClient.delete(`/admin/clients/${id}/files/${fileId}`).then(data),
 };
 
+export const galleryApi = {
+  list: () => apiClient.get("/admin/gallery").then(data),
+  upload: (body) => apiClient.post("/admin/gallery", body, SLOW).then(data),
+  unlinked: () => apiClient.get("/admin/gallery/unlinked").then(data),
+  link: (keys, album) => apiClient.post("/admin/gallery/link", { keys, album }).then(data),
+  url: (id, download) => apiClient.get(`/admin/gallery/${id}/url`, { params: download ? { download: 1 } : {} }).then((r) => r.data.url),
+  update: (id, body) => apiClient.patch(`/admin/gallery/${id}`, body).then(data),
+  remove: (id) => apiClient.delete(`/admin/gallery/${id}`),
+};
+
 export const paymentsApi = crud("payments");
 export const infrastructureApi = crud("infrastructure");
 export const studioApi = crud("studio-projects");

@@ -11,6 +11,7 @@ const paymentController = require("../controllers/paymentController");
 const overviewController = require("../controllers/overviewController");
 const reminderController = require("../controllers/reminderController");
 const crudController = require("../controllers/crudController");
+const galleryController = require("../controllers/galleryController");
 const uploadController = require("../controllers/uploadController");
 const Infrastructure = require("../models/infrastructureModel");
 const StudioProject = require("../models/studioProjectModel");
@@ -85,6 +86,14 @@ router.post("/clients/:id/files/link", clientProjectController.linkFiles);
 router.post("/clients/:id/email", clientProjectController.emailClient);
 router.get("/clients/:id/files/:fileId/url", clientProjectController.fileUrl);
 router.delete("/clients/:id/files/:fileId", clientProjectController.removeFile);
+
+router.get("/gallery", galleryController.list);
+router.post("/gallery", galleryController.upload);
+router.get("/gallery/unlinked", galleryController.unlinked);
+router.post("/gallery/link", galleryController.link);
+router.get("/gallery/:id/url", galleryController.url);
+router.patch("/gallery/:id", galleryController.update);
+router.delete("/gallery/:id", galleryController.remove);
 
 crudRoutes("/payments", paymentController);
 crudRoutes("/infrastructure", crudController(Infrastructure, { label: "item", required: ["name"] }));

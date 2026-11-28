@@ -21,6 +21,7 @@ const NAV = [
   { to: "/admin/dashboard/projects", label: "Projects", icon: icon("M3 7l9-4 9 4-9 4-9-4zM3 12l9 4 9-4M3 17l9 4 9-4") },
   { to: "/admin/dashboard/infrastructure", label: "Infrastructure", icon: icon("M4 4h16v6H4zM4 14h16v6H4zM8 7h.01M8 17h.01") },
   { to: "/admin/dashboard/documents", label: "Documents", icon: icon("M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8zM14 2v6h6M8 13h8M8 17h5") },
+  { to: "/admin/dashboard/gallery", label: "Gallery", icon: icon("M3 5a2 2 0 012-2h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2zM8.5 10a1.5 1.5 0 100-3 1.5 1.5 0 000 3M21 15l-5-5L5 21") },
   { to: "/admin/dashboard/notes", label: "Notes", icon: icon("M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z") },
   { to: "/admin/dashboard/website", label: "Website", icon: icon("M12 22a10 10 0 100-20 10 10 0 000 20M2 12h20M12 2a15 15 0 010 20M12 2a15 15 0 000 20") },
 ];

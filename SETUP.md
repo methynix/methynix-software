@@ -115,6 +115,8 @@ R2_ACCOUNT_ID=8a20c60cecb23a2db89a3eb1a3c5482e
 R2_ACCESS_KEY_ID=
 R2_SECRET_ACCESS_KEY=
 R2_BUCKET=methynix-headquarter
+# Private bucket for the personal Gallery (no public URL)
+R2_GALLERY_BUCKET=company-data
 
 # Where deadline/renewal reminders go (defaults to MAIL_TO)
 REMINDER_EMAIL=

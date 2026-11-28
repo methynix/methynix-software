@@ -101,3 +101,43 @@ exports.getBuffer = async (key) => {
   const r = await getClient().send(new GetObjectCommand({ Bucket: BUCKET, Key: key }));
   return Buffer.from(await r.Body.transformToByteArray());
 };
+
+// The personal gallery lives in its own private bucket (no public URL), so
+// nothing in it is ever reachable except through short-lived signed links.
+const GALLERY_BUCKET = process.env.R2_GALLERY_BUCKET || "company-data";
+
+exports.gallery = {
+  upload: async ({ filename, body, contentType }) => {
+    const key = `gallery/${Date.now()}-${safeName(filename)}`;
+    await getClient().send(
+      new PutObjectCommand({ Bucket: GALLERY_BUCKET, Key: key, Body: body, ContentType: contentType || "application/octet-stream" })
+    );
+    return key;
+  },
+  signedUrl: (key, filename, download = false) =>
+    getSignedUrl(
+      getClient(),
+      new GetObjectCommand({
+        Bucket: GALLERY_BUCKET,
+        Key: key,
+        ResponseContentDisposition: filename ? `${download ? "attachment" : "inline"}; filename="${safeName(filename)}"` : undefined,
+      }),
+      { expiresIn: 60 * 60 }
+    ),
+  remove: (key) => getClient().send(new DeleteObjectCommand({ Bucket: GALLERY_BUCKET, Key: key })),
+  head: async (key) => {
+    try {
+      const r = await getClient().send(new HeadObjectCommand({ Bucket: GALLERY_BUCKET, Key: key }));
+      return { size: r.ContentLength || 0, contentType: r.ContentType || "" };
+    } catch (err) {
+      if (err.$metadata?.httpStatusCode === 404 || err.name === "NotFound") return null;
+      throw err;
+    }
+  },
+  list: async () => {
+    const r = await getClient().send(new ListObjectsV2Command({ Bucket: GALLERY_BUCKET, MaxKeys: 1000 }));
+    return (r.Contents || [])
+      .filter((o) => o.Key && !o.Key.endsWith("/") && !o.Key.endsWith(".keep"))
+      .map((o) => ({ key: o.Key, size: o.Size || 0, modified: o.LastModified }));
+  },
+};
